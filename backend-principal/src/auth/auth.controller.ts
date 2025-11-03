@@ -1,4 +1,4 @@
-import { Controller, Post, Body, ValidationPipe } from '@nestjs/common';
+import { Controller, Post, Body, ValidationPipe, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterAuthDto, LoginAuthDto } from './dto/register-auth.dto';
@@ -50,6 +50,7 @@ export class AuthController {
     }
   })
   @ApiResponse({ status: 401, description: 'Credenciales inválidas' })
+  @HttpCode(HttpStatus.OK)
   async login(@Body(ValidationPipe) loginDto: LoginAuthDto) {
     return this.authService.login(loginDto);
   }

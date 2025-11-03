@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
 import { RegistroComida } from './entities/registro-comida.entity';
-import { RegistroTamizaje } from './entities/registro-tamizaje.entity';
+import { RegistroDeteccionTemprana } from './entities/registro-deteccion-temprana.entity';
 import { firstValueFrom } from 'rxjs';
 import { AxiosResponse } from 'axios';
 
@@ -14,9 +14,12 @@ interface MealAnalysisResponse {
   nutrientes: object;
 }
 
-interface BloodTestAnalysisResponse {
-  hemoglobina: number;
-  interpretacion: string;
+interface EyeDetectionAnalysisResponse {
+  confianza_ia: number;
+  resultado_ia: string;
+  nivel_alerta: string;
+  parametros_detectados: object;
+  observaciones: string;
 }
 
 @Injectable()
@@ -24,8 +27,8 @@ export class RegistrosService {
   constructor(
     @InjectRepository(RegistroComida)
     private readonly comidaRepository: Repository<RegistroComida>,
-    @InjectRepository(RegistroTamizaje)
-    private readonly tamizajeRepository: Repository<RegistroTamizaje>,
+    @InjectRepository(RegistroDeteccionTemprana)
+    private readonly deteccionTempranaRepository: Repository<RegistroDeteccionTemprana>,
     private readonly httpService: HttpService,
     private readonly configService: ConfigService,
   ) {}
@@ -72,9 +75,9 @@ export class RegistrosService {
     }
   }
 
-  async analyzeBloodTest(file: Express.Multer.File, ninoId: string) {
+  async analyzeEyeDetection(file: Express.Multer.File, ninoId: string) {
     try {
-      // Similar al análisis de comida, pero para tamizaje
+      // Análisis de detección temprana por mucosa ocular
       const formData = new FormData();
       // Convertir buffer a Uint8Array para compatibilidad
       const uint8Array = new Uint8Array(file.buffer);
@@ -83,28 +86,31 @@ export class RegistrosService {
 
       const aiBackendUrl = this.configService.get('AI_BACKEND_URL') || 'http://localhost:8000';
       
-      const response: AxiosResponse<BloodTestAnalysisResponse> = await firstValueFrom(
-        this.httpService.post(`${aiBackendUrl}/analyze/blood`, formData, {
+      const response: AxiosResponse<EyeDetectionAnalysisResponse> = await firstValueFrom(
+        this.httpService.post(`${aiBackendUrl}/analyze/eye-detection`, formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         })
       );
 
-      const { hemoglobina, interpretacion } = response.data;
+      const { confianza_ia, resultado_ia, nivel_alerta, parametros_detectados, observaciones } = response.data;
 
       const url_foto = `temp_storage/${Date.now()}_${file.originalname}`;
 
-      const registro = this.tamizajeRepository.create({
+      const registro = this.deteccionTempranaRepository.create({
         url_foto,
-        resultado_hemoglobina: hemoglobina,
-        interpretacion,
+        confianza_ia,
+        resultado_ia,
+        nivel_alerta,
+        parametros_detectados,
+        observaciones,
         nino: { id: ninoId } as any,
       });
 
-      return this.tamizajeRepository.save(registro);
+      return this.deteccionTempranaRepository.save(registro);
     } catch (error) {
-      throw new BadRequestException('Error al analizar la imagen de tamizaje');
+      throw new BadRequestException('Error al analizar la imagen de detección temprana');
     }
   }
 
@@ -115,8 +121,8 @@ export class RegistrosService {
     });
   }
 
-  async getRegistrosTamizaje(ninoId: string) {
-    return this.tamizajeRepository.find({
+  async getRegistrosDeteccionTemprana(ninoId: string) {
+    return this.deteccionTempranaRepository.find({
       where: { nino: { id: ninoId } },
       order: { fecha: 'DESC' },
     });

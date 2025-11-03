@@ -4,7 +4,14 @@ import { SeedersService } from './seeders.service';
 import { User } from '../auth/entities/user.entity';
 import { Nino } from '../ninos/entities/nino.entity';
 import { RegistroComida } from '../registros/entities/registro-comida.entity';
-import { RegistroTamizaje } from '../registros/entities/registro-tamizaje.entity';
+import { RegistroDeteccionTemprana } from '../registros/entities/registro-deteccion-temprana.entity';
+import { Ingredient } from '../ingredient/entities/ingredient.entity';
+import { Dish } from '../dish/entities/dish.entity';
+import { DishComposition } from '../dish-composition/entities/dish-composition.entity';
+import { AgeRange } from '../age-range/entities/age-range.entity';
+import { DailyRequirement } from '../daily-requirement/entities/daily-requirement.entity';
+import { PlateType } from '../plate-type/entities/plate-type.entity';
+import { MealLog } from '../meal-log/entities/meal-log.entity';
 
 @Module({
   imports: [
@@ -12,7 +19,14 @@ import { RegistroTamizaje } from '../registros/entities/registro-tamizaje.entity
       User,
       Nino,
       RegistroComida,
-      RegistroTamizaje,
+      RegistroDeteccionTemprana,
+      Ingredient,
+      Dish,
+      DishComposition,
+      AgeRange,
+      DailyRequirement,
+      PlateType,
+      MealLog,
     ]),
   ],
   providers: [SeedersService],

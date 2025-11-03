@@ -1,47 +1,56 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { DashboardService } from './dashboard.service';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('dashboard')
-@UseGuards(AuthGuard('jwt'), RolesGuard)
-@Roles('admin')
+@UseGuards(JwtAuthGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  getGeneralStats() {
-    return this.dashboardService.getGeneralStats();
+  async getStats() {
+    return this.dashboardService.getStats();
   }
 
   @Get('nutrition')
-  getNutritionStats() {
-    return this.dashboardService.getNutritionAverages();
-  }
-
-  @Get('hemoglobin')
-  getHemoglobinStats() {
-    return this.dashboardService.getHemoglobinStats();
-  }
-
-  @Get('activity')
-  getRecentActivity() {
-    return this.dashboardService.getRecentActivity();
-  }
-
-  @Get('alerts')
-  getAlerts() {
-    return this.dashboardService.getAlertsAndRecommendations();
+  async getNutrition() {
+    return this.dashboardService.getNutritionData();
   }
 
   @Get('users')
-  getAllUsers() {
+  async getUsers() {
     return this.dashboardService.getAllUsers();
   }
 
   @Get('children')
-  getAllChildren() {
+  async getChildren() {
     return this.dashboardService.getAllChildren();
+  }
+
+  @Get('activity')
+  async getActivity() {
+    const stats = await this.dashboardService.getStats();
+    return stats.recentActivity;
+  }
+
+  @Get('alerts')
+  async getAlerts() {
+    const stats = await this.dashboardService.getStats();
+    return stats.alerts;
+  }
+
+  @Get('early-detection-progress')
+  async getEarlyDetectionProgress() {
+    return this.dashboardService.getEarlyDetectionProgressData();
+  }
+
+  @Get('early-detection-distribution')
+  async getEarlyDetectionDistribution() {
+    return this.dashboardService.getEarlyDetectionDistributionData();
+  }
+
+  @Get('all-detections')
+  async getAllDetections() {
+    return this.dashboardService.getAllDetections();
   }
 }

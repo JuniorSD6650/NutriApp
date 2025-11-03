@@ -4,11 +4,11 @@ import { HttpModule } from '@nestjs/axios';
 import { RegistrosController } from './registros.controller';
 import { RegistrosService } from './registros.service';
 import { RegistroComida } from './entities/registro-comida.entity';
-import { RegistroTamizaje } from './entities/registro-tamizaje.entity';
+import { RegistroDeteccionTemprana } from './entities/registro-deteccion-temprana.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RegistroComida, RegistroTamizaje]),
+    TypeOrmModule.forFeature([RegistroComida, RegistroDeteccionTemprana]),
     HttpModule,
   ],
   controllers: [RegistrosController],

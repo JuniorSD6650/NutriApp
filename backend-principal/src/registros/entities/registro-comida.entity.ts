@@ -1,6 +1,15 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, ManyToOne } from 'typeorm';
 import { Nino } from '../../ninos/entities/nino.entity';
 
+export interface NutrientesJson {
+  proteinas: number;
+  carbohidratos: number;
+  grasas: number;
+  fibra: number;
+  vitamina_c: number;
+  calcio: number;
+}
+
 @Entity({ name: 'registros_comida' })
 export class RegistroComida {
   @PrimaryGeneratedColumn('uuid')
@@ -19,7 +28,7 @@ export class RegistroComida {
   calorias: number;
 
   @Column({ type: 'json' })
-  json_nutrientes: object;
+  json_nutrientes: NutrientesJson;
 
   @ManyToOne(() => Nino, { eager: true })
   nino: Nino;

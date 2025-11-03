@@ -41,9 +41,9 @@ export class RegistrosController {
     return this.registrosService.analyzeMeal(file, ninoId);
   }
 
-  @Post('upload/blood-test')
+  @Post('upload/eye-detection')
   @UseInterceptors(FileInterceptor('file'))
-  @ApiOperation({ summary: 'Subir foto de tamizaje para análisis de hemoglobina' })
+  @ApiOperation({ summary: 'Subir foto de mucosa ocular para detección temprana de anemia' })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
@@ -52,7 +52,7 @@ export class RegistrosController {
         file: {
           type: 'string',
           format: 'binary',
-          description: 'Imagen del resultado de tamizaje',
+          description: 'Imagen de la mucosa ocular',
         },
         ninoId: {
           type: 'string',
@@ -62,11 +62,12 @@ export class RegistrosController {
     },
   })
   @ApiResponse({ status: 201, description: 'Análisis completado y registro guardado' })
-  async uploadBloodTest(
+  @ApiResponse({ status: 400, description: 'Error en el análisis de la imagen' })
+  async uploadEyeDetection(
     @UploadedFile() file: Express.Multer.File,
     @Body('ninoId') ninoId: string,
   ) {
-    return this.registrosService.analyzeBloodTest(file, ninoId);
+    return this.registrosService.analyzeEyeDetection(file, ninoId);
   }
 
   @Get('comida/:ninoId')
@@ -77,11 +78,11 @@ export class RegistrosController {
     return this.registrosService.getRegistrosComida(ninoId);
   }
 
-  @Get('tamizaje/:ninoId')
-  @ApiOperation({ summary: 'Obtener registros de tamizaje de un niño' })
+  @Get('deteccion-temprana/:ninoId')
+  @ApiOperation({ summary: 'Obtener registros de detección temprana de un niño' })
   @ApiParam({ name: 'ninoId', description: 'ID del niño' })
-  @ApiResponse({ status: 200, description: 'Lista de registros de tamizaje' })
-  getRegistrosTamizaje(@Param('ninoId') ninoId: string) {
-    return this.registrosService.getRegistrosTamizaje(ninoId);
+  @ApiResponse({ status: 200, description: 'Lista de registros de detección temprana' })
+  getRegistrosDeteccionTemprana(@Param('ninoId') ninoId: string) {
+    return this.registrosService.getRegistrosDeteccionTemprana(ninoId);
   }
 }

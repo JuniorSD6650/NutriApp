@@ -42,6 +42,20 @@ export class NinosService {
     return nino;
   }
 
+  // Método para uso administrativo - no requiere madreId
+  async findOneById(id: string): Promise<Nino> {
+    const nino = await this.ninoRepository.findOne({
+      where: { id },
+      relations: ['madre'],
+    });
+
+    if (!nino) {
+      throw new NotFoundException(`Niño con ID ${id} no encontrado`);
+    }
+
+    return nino;
+  }
+
   async update(id: string, updateData: Partial<CreateNinoDto>, madreId: string) {
     const nino = await this.findOne(id, madreId);
     
