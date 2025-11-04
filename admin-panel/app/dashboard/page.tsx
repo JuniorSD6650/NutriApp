@@ -97,9 +97,9 @@ export default function DashboardPage() {
       
       setEarlyDetectionProgress(earlyProgressRes.data);
       setEarlyDetectionDistribution(earlyDistRes.data);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching dashboard data:', error);
-      if (error.response?.status === 401) {
+      if (error?.response?.status === 401) {
         return;
       }
     } finally {
@@ -509,7 +509,7 @@ export default function DashboardPage() {
               📋 Actividad Reciente
             </h3>
             <div className="space-y-3">
-              {stats?.recentActivity?.length > 0 ? (
+              {stats?.recentActivity && stats.recentActivity.length > 0 ? (
                 stats.recentActivity.slice(0, 5).map((activity, index) => (
                   <div key={index} className="flex items-center space-x-3">
                     <div className="flex-shrink-0">
@@ -538,7 +538,7 @@ export default function DashboardPage() {
               ⚠️ Alertas de Detección Temprana
             </h3>
             <div className="space-y-3">
-              {stats?.alerts?.length > 0 ? (
+              {stats?.alerts && stats.alerts.length > 0 ? (
                 stats.alerts.slice(0, 5).map((alert, index) => (
                   <div key={index} className="bg-yellow-50 border-l-4 border-yellow-400 p-3">
                     <div className="flex">
