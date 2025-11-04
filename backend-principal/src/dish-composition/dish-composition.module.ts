@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DishCompositionController } from './dish-composition.controller';
 import { DishCompositionService } from './dish-composition.service';
+import { DishCompositionController } from './dish-composition.controller';
 import { DishComposition } from './entities/dish-composition.entity';
 
 @Module({

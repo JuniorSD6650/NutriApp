@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DishComposition } from './entities/dish-composition.entity';
-import { CreateDishCompositionDto, UpdateDishCompositionDto } from './dto/dish-composition.dto';
+import { CreateDishCompositionDto } from './dto/create-dish-composition.dto';
+import { UpdateDishCompositionDto } from './dto/update-dish-composition.dto';
 
 @Injectable()
 export class DishCompositionService {
@@ -11,43 +12,63 @@ export class DishCompositionService {
     private readonly dishCompositionRepository: Repository<DishComposition>,
   ) {}
 
-  async create(createDishCompositionDto: CreateDishCompositionDto): Promise<DishComposition> {
-    const composition = this.dishCompositionRepository.create(createDishCompositionDto);
-    return this.dishCompositionRepository.save(composition);
-  }
+  async create(createDishCompositionDto: CreateDishCompositionDto) {
+    const composition = this.dishCompositionRepository.create({
+      dish: { id: createDishCompositionDto.dishId },
+      ingredient: { id: createDishCompositionDto.ingredientId },
+      grams: createDishCompositionDto.grams,
+    });
 
-  async findAll(): Promise<DishComposition[]> {
-    return this.dishCompositionRepository.find({
+    const savedComposition = await this.dishCompositionRepository.save(composition);
+
+    // Retornar la composición completa con las relaciones
+    return await this.dishCompositionRepository.findOne({
+      where: { id: savedComposition.id },
       relations: ['dish', 'ingredient'],
     });
   }
 
-  async findByDish(dishId: string): Promise<DishComposition[]> {
-    return this.dishCompositionRepository.find({
-      where: { dish: { id: dishId } },
+  async findAll() {
+    return await this.dishCompositionRepository.find({
       relations: ['dish', 'ingredient'],
     });
   }
 
-  async findOne(id: string): Promise<DishComposition> {
-    const composition = await this.dishCompositionRepository.findOne({ 
+  async findOne(id: string) {
+    const composition = await this.dishCompositionRepository.findOne({
       where: { id },
       relations: ['dish', 'ingredient'],
     });
+
     if (!composition) {
-      throw new NotFoundException(`DishComposition with ID ${id} not found`);
+      throw new NotFoundException(`Dish composition with ID ${id} not found`);
     }
+
     return composition;
   }
 
-  async update(id: string, updateDishCompositionDto: UpdateDishCompositionDto): Promise<DishComposition> {
+  async update(id: string, updateDishCompositionDto: UpdateDishCompositionDto) {
     const composition = await this.findOne(id);
     Object.assign(composition, updateDishCompositionDto);
-    return this.dishCompositionRepository.save(composition);
+    const savedComposition = await this.dishCompositionRepository.save(composition);
+
+    // Retornar la composición actualizada con las relaciones
+    return await this.dishCompositionRepository.findOne({
+      where: { id: savedComposition.id },
+      relations: ['dish', 'ingredient'],
+    });
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string) {
     const composition = await this.findOne(id);
     await this.dishCompositionRepository.remove(composition);
+    return { message: 'Dish composition deleted successfully' };
+  }
+
+  async findByDish(dishId: string) {
+    return await this.dishCompositionRepository.find({
+      where: { dish: { id: dishId } },
+      relations: ['ingredient'],
+    });
   }
 }

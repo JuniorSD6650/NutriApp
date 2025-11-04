@@ -154,13 +154,23 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
   const [selectedIngredient, setSelectedIngredient] = useState('');
   const [grams, setGrams] = useState(0);
   const [compositions, setCompositions] = useState<DishComposition[]>([]);
+  const [isAddingIngredient, setIsAddingIngredient] = useState(false);
+
+  // Función para refrescar las composiciones desde el backend
+  const refreshCompositions = async () => {
+    if (!dish) return;
+    try {
+      const response = await api.get(`/dish-compositions/dish/${dish.id}`);
+      setCompositions(response.data);
+    } catch (error) {
+      console.error('Error refreshing compositions:', error);
+    }
+  };
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && dish) {
       fetchIngredients();
-      if (dish) {
-        setCompositions(dish.compositions || []);
-      }
+      refreshCompositions(); // Usar la función para refrescar desde el backend
     }
   }, [isOpen, dish]);
 
@@ -177,6 +187,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
     if (!selectedIngredient || grams <= 0 || !dish) return;
 
     try {
+      setIsAddingIngredient(true);
       const data = {
         dishId: dish.id,
         ingredientId: selectedIngredient,
@@ -184,24 +195,30 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
       };
       
       await api.post('/dish-compositions', data);
+      
+      // Refrescar las composiciones desde el backend
+      await refreshCompositions();
+      
       setSelectedIngredient('');
       setGrams(0);
+      
+      // Refrescar la lista principal también
       onRefresh();
-      // Actualizar la lista local también
-      const ingredient = ingredients.find(i => i.id === selectedIngredient);
-      if (ingredient) {
-        const newComposition = { id: Date.now().toString(), grams, ingredient };
-        setCompositions([...compositions, newComposition]);
-      }
     } catch (error) {
       console.error('Error adding composition:', error);
+    } finally {
+      setIsAddingIngredient(false);
     }
   };
 
   const removeComposition = async (compositionId: string) => {
     try {
       await api.delete(`/dish-compositions/${compositionId}`);
-      setCompositions(compositions.filter(c => c.id !== compositionId));
+      
+      // Refrescar las composiciones desde el backend
+      await refreshCompositions();
+      
+      // Refrescar la lista principal también
       onRefresh();
     } catch (error) {
       console.error('Error removing composition:', error);
@@ -297,10 +314,10 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
 
               <button
                 onClick={addComposition}
-                disabled={!selectedIngredient || grams <= 0}
+                disabled={!selectedIngredient || grams <= 0 || isAddingIngredient}
                 className="w-full bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-300"
               >
-                Agregar Ingrediente
+                {isAddingIngredient ? 'Agregando...' : 'Agregar Ingrediente'}
               </button>
             </div>
 
@@ -370,9 +387,11 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
                       </div>
                     </div>
                   </div>
-                  <p className="text-center text-sm text-gray-600 mt-2">
-                    🍽️ Representación visual del plato
-                  </p>
+                  <div className="mt-6">
+                    <p className="text-center text-sm text-gray-600">
+                      🍽️ Representación visual del plato
+                    </p>
+                  </div>
                 </div>
 
                 {/* Estadísticas nutricionales */}

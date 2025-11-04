@@ -11,9 +11,6 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { IngredientModule } from './ingredient/ingredient.module';
 import { DishModule } from './dish/dish.module';
 import { DishCompositionModule } from './dish-composition/dish-composition.module';
-import { AgeRangeModule } from './age-range/age-range.module';
-import { PlateTypeModule } from './plate-type/plate-type.module';
-import { MealLogModule } from './meal-log/meal-log.module';
 
 // Importar todas las entidades
 import { User } from './auth/entities/user.entity';
@@ -66,9 +63,6 @@ import { MealLog } from './meal-log/entities/meal-log.entity';
     IngredientModule,
     DishModule,
     DishCompositionModule,
-    AgeRangeModule,
-    PlateTypeModule,
-    MealLogModule,
   ],
   controllers: [AppController],
   providers: [AppService],
