@@ -176,8 +176,22 @@ const IngredientModal = ({ isOpen, onClose, onSave, ingredient }: IngredientModa
   );
 };
 
+interface PaginatedIngredients {
+  data: Ingredient[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function IngredientsPage() {
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [paginationInfo, setPaginationInfo] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -189,16 +203,47 @@ export default function IngredientsPage() {
     fetchIngredients();
   }, []);
 
-  const fetchIngredients = async () => {
+  const fetchIngredients = async (page: number = 1, search?: string) => {
     try {
       setIsLoading(true);
-      const response = await api.get('/ingredients');
-      setIngredients(response.data);
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+      });
+      
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      const response = await api.get(`/ingredients?${params.toString()}`);
+      const result: PaginatedIngredients = response.data;
+      
+      setIngredients(result.data || []);
+      setPaginationInfo({
+        total: result.total || 0,
+        page: result.page || 1,
+        limit: result.limit || 10,
+        totalPages: result.totalPages || 0,
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar ingredientes');
+      setIngredients([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= paginationInfo.totalPages) {
+      fetchIngredients(newPage, searchTerm);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    fetchIngredients(1, value);
   };
 
   const handleCreate = () => {
@@ -269,27 +314,34 @@ export default function IngredientsPage() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
+      {/* Buscador */}
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="max-w-md">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Buscar ingredientes:
+          </label>
+          <input
+            type="text"
+            placeholder="Nombre del ingrediente..."
+            value={searchTerm}
+            onChange={handleSearchChange}
+            className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          {searchTerm && (
+            <p className="text-xs text-gray-500 mt-1">
+              {paginationInfo.total > 0 
+                ? `Se encontraron ${paginationInfo.total} resultado(s)`
+                : 'No se encontraron resultados'
+              }
+            </p>
+          )}
         </div>
-      )}
-
-      {/* Barra de búsqueda */}
-      <div className="mb-6">
-        <input
-          type="text"
-          placeholder="Buscar ingredientes..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
       </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-blue-600">{ingredients.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{paginationInfo.total}</div>
           <div className="text-sm text-gray-600">Total Ingredientes</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
@@ -312,73 +364,73 @@ export default function IngredientsPage() {
         </div>
       </div>
 
-      {/* Tabla de ingredientes */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Ingrediente
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Hierro (mg/100g)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Calorías (kcal/100g)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Proteínas (g/100g)
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Acciones
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredIngredients.map((ingredient) => (
-              <tr key={ingredient.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">{ingredient.name}</div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {(Number(ingredient.iron_mg_per_100g) || 0).toFixed(1)}
+      {/* Lista de ingredientes */}
+      <div className="bg-white shadow overflow-hidden sm:rounded-md mb-6">
+        {ingredients.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {ingredients.map((ingredient) => (
+              <li key={ingredient.id} className="px-6 py-4 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-gray-900">
+                      {ingredient.name}
+                    </div>
+                    <div className="mt-1 text-sm text-gray-600 flex space-x-6">
+                      <span>Hierro: {(Number(ingredient.iron_mg_per_100g) || 0).toFixed(1)}mg/100g</span>
+                      <span>Calorías: {(Number(ingredient.calories_per_100g) || 0).toFixed(0)}kcal/100g</span>
+                      {ingredient.protein_g_per_100g && (
+                        <span>Proteínas: {(Number(ingredient.protein_g_per_100g) || 0).toFixed(1)}g/100g</span>
+                      )}
+                    </div>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {(Number(ingredient.calories_per_100g) || 0).toFixed(0)}
+                  <div className="flex items-center space-x-3">
+                    <button
+                      onClick={() => handleEdit(ingredient)}
+                      className="text-blue-600 hover:text-blue-900"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(ingredient.id)}
+                      className="text-red-600 hover:text-red-900"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm text-gray-900">
-                    {ingredient.protein_g_per_100g ? (Number(ingredient.protein_g_per_100g) || 0).toFixed(1) : 'N/A'}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    onClick={() => handleEdit(ingredient)}
-                    className="text-blue-600 hover:text-blue-900 mr-3"
-                  >
-                    <PencilIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(ingredient.id)}
-                    className="text-red-600 hover:text-red-900"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </td>
-              </tr>
+                </div>
+              </li>
             ))}
-          </tbody>
-        </table>
-
-        {filteredIngredients.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No se encontraron ingredientes
+          </ul>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-4xl mb-4">🥘</div>
+            <p className="text-lg mb-2">No se encontraron ingredientes</p>
+            <p className="text-sm">
+              {searchTerm ? 'Intenta con otro término de búsqueda' : 'Crea tu primer ingrediente'}
+            </p>
           </div>
         )}
+      </div>
+
+      {/* Paginación */}
+      <div className="flex justify-between items-center mb-6">
+        <button
+          onClick={() => handlePageChange(paginationInfo.page - 1)}
+          disabled={paginationInfo.page === 1}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+        >
+          Anterior
+        </button>
+        <div className="text-sm text-gray-700">
+          Página {paginationInfo.page} de {paginationInfo.totalPages}
+        </div>
+        <button
+          onClick={() => handlePageChange(paginationInfo.page + 1)}
+          disabled={paginationInfo.page === paginationInfo.totalPages}
+          className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+        >
+          Siguiente
+        </button>
       </div>
 
       <IngredientModal

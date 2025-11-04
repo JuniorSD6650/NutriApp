@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { DishService } from './dish.service';
 import { CreateDishDto, UpdateDishDto } from './dto/dish.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,10 +19,20 @@ export class DishController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los platillos' })
-  @ApiResponse({ status: 200, description: 'Lista de platillos con sus composiciones' })
-  findAll() {
-    return this.dishService.findAll();
+  @ApiOperation({ summary: 'Obtener platillos con paginación' })
+  @ApiQuery({ name: 'page', required: false, description: 'Número de página (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por nombre o descripción' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filtrar por estado (active/inactive)' })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+    @Query('status') status?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    return this.dishService.findAllPaginated(pageNumber, limitNumber, search, status);
   }
 
   @Get('active')

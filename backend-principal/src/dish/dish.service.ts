@@ -157,4 +157,53 @@ export class DishService {
       currentStatus: dish.is_active
     };
   }
+
+  async findAllPaginated(page: number = 1, limit: number = 10, search?: string, status?: string): Promise<{
+    data: Dish[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.dishRepository
+      .createQueryBuilder('dish')
+      .leftJoinAndSelect('dish.compositions', 'compositions')
+      .leftJoinAndSelect('compositions.ingredient', 'ingredient')
+      .orderBy('dish.created_at', 'DESC');
+
+    // Aplicar filtro de búsqueda
+    if (search && search.trim()) {
+      queryBuilder.where(
+        'LOWER(dish.name) LIKE LOWER(:search) OR LOWER(dish.description) LIKE LOWER(:search)',
+        { search: `%${search.trim()}%` }
+      );
+    }
+
+    // Aplicar filtro por estado
+    if (status === 'active') {
+      queryBuilder.andWhere('dish.is_active = :isActive', { isActive: true });
+    } else if (status === 'inactive') {
+      queryBuilder.andWhere('dish.is_active = :isActive', { isActive: false });
+    }
+
+    // Contar total de registros
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
 }

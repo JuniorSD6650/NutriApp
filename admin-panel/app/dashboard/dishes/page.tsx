@@ -524,8 +524,22 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
   );
 };
 
+interface PaginatedDishes {
+  data: Dish[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function DishesPage() {
   const [dishes, setDishes] = useState<Dish[]>([]);
+  const [paginationInfo, setPaginationInfo] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -538,16 +552,60 @@ export default function DishesPage() {
     fetchDishes();
   }, []);
 
-  const fetchDishes = async () => {
+  const fetchDishes = async (page: number = 1, search?: string, status?: string) => {
     try {
       setIsLoading(true);
-      const response = await api.get('/dishes');
-      setDishes(response.data);
+      
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+      });
+      
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      if (status) {
+        params.append('status', status);
+      }
+      
+      const response = await api.get(`/dishes?${params.toString()}`);
+      const result: PaginatedDishes = response.data;
+      
+      setDishes(result.data || []);
+      setPaginationInfo({
+        total: result.total || 0,
+        page: result.page || 1,
+        limit: result.limit || 10,
+        totalPages: result.totalPages || 0,
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar platillos');
+      setDishes([]);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= paginationInfo.totalPages) {
+      const status = showInactive ? '' : 'active';
+      fetchDishes(newPage, searchTerm, status);
+    }
+  };
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchTerm(value);
+    const status = showInactive ? '' : 'active';
+    fetchDishes(1, value, status);
+  };
+
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const checked = e.target.checked;
+    setShowInactive(checked);
+    const status = checked ? '' : 'active';
+    fetchDishes(1, searchTerm, status);
   };
 
   const handleCreate = () => {
@@ -790,38 +848,47 @@ export default function DishesPage() {
         </button>
       </div>
 
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-          {error}
-        </div>
-      )}
-
       {/* Filtros */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        <input
-          type="text"
-          placeholder="Buscar platillos..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <div className="flex items-center">
-          <label className="flex items-center cursor-pointer">
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Buscar platillos:
+            </label>
             <input
-              type="checkbox"
-              checked={showInactive}
-              onChange={(e) => setShowInactive(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              type="text"
+              placeholder="Nombre o descripción..."
+              value={searchTerm}
+              onChange={handleSearchChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
-            <span className="ml-2 text-sm text-gray-700">Mostrar platillos inactivos</span>
-          </label>
+          </div>
+          <div className="flex items-center justify-start">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showInactive}
+                onChange={handleStatusFilterChange}
+                className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+              />
+              <span className="ml-2 text-sm text-gray-700">Mostrar platillos inactivos</span>
+            </label>
+          </div>
         </div>
+        {searchTerm && (
+          <p className="text-xs text-gray-500 mt-2">
+            {paginationInfo.total > 0 
+              ? `Se encontraron ${paginationInfo.total} resultado(s)`
+              : 'No se encontraron resultados'
+            }
+          </p>
+        )}
       </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-blue-600">{dishes.length}</div>
+          <div className="text-2xl font-bold text-blue-600">{paginationInfo.total}</div>
           <div className="text-sm text-gray-600">Total Platillos</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
@@ -851,105 +918,134 @@ export default function DishesPage() {
       </div>
 
       {/* Lista de platillos */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {filteredDishes.map((dish) => {
-            const totalIngredients = dish.compositions?.length || 0;
-            const totalIron = dish.compositions?.reduce((sum, comp) => 
-              sum + (comp.ingredient.iron_mg_per_100g / 100) * comp.grams, 0
-            ) || 0;
-            
-            return (
-              <li key={dish.id} className={`px-6 py-4 hover:bg-gray-50 ${!dish.is_active ? 'bg-gray-50 opacity-75' : ''}`}>
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <h3 className={`text-lg font-medium ${dish.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
-                          {dish.name}
-                        </h3>
-                        <div className="ml-3 flex items-center">
-                          {dish.is_active ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              <CheckCircleIcon className="h-3 w-3 mr-1" />
-                              Activo
-                            </span>
-                          ) : (
+      <div className="bg-white shadow overflow-hidden sm:rounded-md mb-6">
+        {dishes.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {dishes.map((dish) => {
+              const totalIngredients = dish.compositions?.length || 0;
+              const totalIron = dish.compositions?.reduce((sum, comp) => 
+                sum + (comp.ingredient.iron_mg_per_100g / 100) * comp.grams, 0
+              ) || 0;
+              
+              return (
+                <li key={dish.id} className={`px-6 py-4 hover:bg-gray-50 ${!dish.is_active ? 'bg-gray-50 opacity-75' : ''}`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <h3 className={`text-lg font-medium ${dish.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                            {dish.name}
+                          </h3>
+                          <div className="ml-3 flex items-center">
+                            {dish.is_active ? (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <CheckCircleIcon className="h-3 w-3 mr-1" />
+                                Activo
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <XCircleIcon className="h-3 w-3 mr-1" />
+                                Inactivo
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {totalIngredients} ingredientes
+                          </span>
+                          {totalIron > 0 && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              <XCircleIcon className="h-3 w-3 mr-1" />
-                              Inactivo
+                              {totalIron.toFixed(1)}mg hierro
                             </span>
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {totalIngredients} ingredientes
-                        </span>
-                        {totalIron > 0 && (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                            {totalIron.toFixed(1)}mg hierro
-                          </span>
-                        )}
+                      {dish.description && (
+                        <p className={`mt-1 text-sm ${dish.is_active ? 'text-gray-600' : 'text-gray-400'}`}>
+                          {dish.description}
+                        </p>
+                      )}
+                      <div className="mt-2 text-xs text-gray-500">
+                        Creado: {new Date(dish.created_at).toLocaleDateString()}
                       </div>
                     </div>
-                    {dish.description && (
-                      <p className={`mt-1 text-sm ${dish.is_active ? 'text-gray-600' : 'text-gray-400'}`}>
-                        {dish.description}
-                      </p>
-                    )}
-                    <div className="mt-2 text-xs text-gray-500">
-                      Creado: {new Date(dish.created_at).toLocaleDateString()}
+                    <div className="ml-4 flex items-center space-x-2">
+                      <button
+                        onClick={() => handleViewComposition(dish)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Ver composición"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(dish)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="Editar"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleStatus(dish.id, dish.name, dish.is_active)}
+                        className={`${dish.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
+                        title={dish.is_active ? 'Desactivar' : 'Activar'}
+                      >
+                        {dish.is_active ? (
+                          <XCircleIcon className="h-5 w-5" />
+                        ) : (
+                          <CheckCircleIcon className="h-5 w-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(dish.id, dish.name)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Eliminar"
+                      >
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
-                  <div className="ml-4 flex items-center space-x-2">
-                    <button
-                      onClick={() => handleViewComposition(dish)}
-                      className="text-green-600 hover:text-green-900"
-                      title="Ver composición"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleEdit(dish)}
-                      className="text-blue-600 hover:text-blue-900"
-                      title="Editar"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button
-                      onClick={() => handleToggleStatus(dish.id, dish.name, dish.is_active)}
-                      className={`${dish.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
-                      title={dish.is_active ? 'Desactivar' : 'Activar'}
-                    >
-                      {dish.is_active ? (
-                        <XCircleIcon className="h-5 w-5" />
-                      ) : (
-                        <CheckCircleIcon className="h-5 w-5" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(dish.id, dish.name)}
-                      className="text-red-600 hover:text-red-900"
-                      title="Eliminar"
-                    >
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-
-        {filteredDishes.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            {showInactive 
-              ? 'No se encontraron platillos'
-              : 'No se encontraron platillos activos'
-            }
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-4xl mb-4">🍽️</div>
+            <p className="text-lg mb-2">
+              {showInactive 
+                ? 'No se encontraron platillos'
+                : 'No se encontraron platillos activos'
+              }
+            </p>
+            <p className="text-sm">
+              {searchTerm ? 'Intenta con otro término de búsqueda' : 'Crea tu primer platillo'}
+            </p>
           </div>
         )}
+      </div>
+
+      {/* Paginación */}
+      <div className="flex justify-between items-center mb-6">
+        <div className="text-sm text-gray-500">
+          Mostrando {paginationInfo.page * paginationInfo.limit - paginationInfo.limit + 1} - {Math.min(paginationInfo.page * paginationInfo.limit, paginationInfo.total)} de {paginationInfo.total} platillos
+        </div>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handlePageChange(paginationInfo.page - 1)}
+            disabled={paginationInfo.page === 1}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+          >
+            Anterior
+          </button>
+          <button
+            onClick={() => handlePageChange(paginationInfo.page + 1)}
+            disabled={paginationInfo.page === paginationInfo.totalPages}
+            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300 disabled:opacity-50"
+          >
+            Siguiente
+          </button>
+        </div>
       </div>
 
       <DishModal

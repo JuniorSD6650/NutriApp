@@ -23,15 +23,33 @@ export class DashboardController {
   }
 
   @Get('users')
-  async getUsers() {
-    return this.dashboardService.getAllUsers();
+  @ApiOperation({ summary: 'Obtener usuarios con paginación' })
+  @ApiQuery({ name: 'page', required: false, description: 'Número de página (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por nombre o email' })
+  getAllUsersPaginated(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    return this.dashboardService.getAllUsersPaginated(pageNumber, limitNumber, search);
   }
 
   @Get('children')
-  @ApiOperation({ summary: 'Obtener lista de niños registrados' })
-  @ApiResponse({ status: 200, description: 'Lista de niños' })
-  async getChildren() {
-    return this.dashboardService.getChildren();
+  @ApiOperation({ summary: 'Obtener niños con paginación' })
+  @ApiQuery({ name: 'page', required: false, description: 'Número de página (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por nombre del niño o madre' })
+  getChildrenPaginated(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    return this.dashboardService.getChildrenPaginated(pageNumber, limitNumber, search);
   }
 
   @Get('activity')

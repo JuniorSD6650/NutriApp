@@ -119,6 +119,88 @@ export class DashboardService {
     };
   }
 
+  async getAllUsersPaginated(page: number = 1, limit: number = 10, search?: string): Promise<{
+    data: User[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.userRepository
+      .createQueryBuilder('user')
+      .select(['user.id', 'user.nombre', 'user.email', 'user.rol', 'user.created_at'])
+      .orderBy('user.created_at', 'DESC');
+
+    // Aplicar filtro de búsqueda
+    if (search && search.trim()) {
+      queryBuilder.where(
+        'LOWER(user.nombre) LIKE LOWER(:search) OR LOWER(user.email) LIKE LOWER(:search)',
+        { search: `%${search.trim()}%` }
+      );
+    }
+
+    // Contar total de registros
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
+  async getChildrenPaginated(page: number = 1, limit: number = 10, search?: string): Promise<{
+    data: Nino[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.ninoRepository
+      .createQueryBuilder('nino')
+      .leftJoinAndSelect('nino.madre', 'madre')
+      .orderBy('nino.nombre', 'ASC');
+
+    // Aplicar filtro de búsqueda
+    if (search && search.trim()) {
+      queryBuilder.where(
+        'LOWER(nino.nombre) LIKE LOWER(:search) OR LOWER(madre.nombre) LIKE LOWER(:search)',
+        { search: `%${search.trim()}%` }
+      );
+    }
+
+    // Contar total de registros
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
+
   async getEarlyDetectionProgress() {
     // Obtener datos de los últimos 6 meses agrupados por mes
     const sixMonthsAgo = new Date();

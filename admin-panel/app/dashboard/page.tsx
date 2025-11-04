@@ -66,25 +66,27 @@ export default function DashboardPage() {
       const statsRes = await api.get('/dashboard/stats');
       setStats(statsRes.data);
 
-      // Obtener estadísticas de nutrición
+      // Obtener estadísticas de nutrición con endpoints paginados
       const [ingredientsRes, dishesRes, mealLogsRes] = await Promise.all([
-        api.get('/ingredients'),
-        api.get('/dishes'),
+        api.get('/ingredients?limit=1'), // Solo necesitamos el total, no los datos
+        api.get('/dishes?limit=1'), // Solo necesitamos el total, no los datos
         api.get('/meal-logs?limit=1000'), // Obtener un límite alto para contar todos
       ]);
 
-      // Ahora mealLogsRes.data tiene la estructura paginada
-      const mealLogsData = mealLogsRes.data.data || []; // Extraer el array de datos
-      const totalMealLogs = mealLogsRes.data.total || 0; // Usar el total de la paginación
+      // Extraer totales de las respuestas paginadas
+      const totalIngredients = ingredientsRes.data.total || 0;
+      const totalDishes = dishesRes.data.total || 0;
+      const mealLogsData = mealLogsRes.data.data || [];
+      const totalMealLogs = mealLogsRes.data.total || 0;
 
       const avgIron = mealLogsData.length > 0 
         ? mealLogsData.reduce((sum: number, log: any) => sum + (Number(log.iron_consumed_mg) || 0), 0) / mealLogsData.length
         : 0;
 
       setNutritionStats({
-        totalIngredients: ingredientsRes.data.length,
-        totalDishes: dishesRes.data.length,
-        totalMealLogs: totalMealLogs, // Usar el total correcto
+        totalIngredients: totalIngredients,
+        totalDishes: totalDishes,
+        totalMealLogs: totalMealLogs,
         averageIronPerMeal: avgIron,
       });
       

@@ -46,4 +46,41 @@ export class IngredientService {
     const ingredient = await this.findOne(id);
     await this.ingredientRepository.remove(ingredient);
   }
+
+  async findAllPaginated(page: number = 1, limit: number = 10, search?: string): Promise<{
+    data: Ingredient[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.ingredientRepository
+      .createQueryBuilder('ingredient')
+      .orderBy('ingredient.name', 'ASC');
+
+    // Aplicar filtro de búsqueda
+    if (search && search.trim()) {
+      queryBuilder.where('LOWER(ingredient.name) LIKE LOWER(:search)', { search: `%${search.trim()}%` });
+    }
+
+    // Contar total de registros
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
 }

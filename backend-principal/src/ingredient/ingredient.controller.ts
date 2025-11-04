@@ -1,5 +1,5 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { IngredientService } from './ingredient.service';
 import { CreateIngredientDto, UpdateIngredientDto } from './dto/ingredient.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -19,10 +19,18 @@ export class IngredientController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los ingredientes' })
-  @ApiResponse({ status: 200, description: 'Lista de ingredientes' })
-  findAll() {
-    return this.ingredientService.findAll();
+  @ApiOperation({ summary: 'Obtener ingredientes con paginación' })
+  @ApiQuery({ name: 'page', required: false, description: 'Número de página (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por nombre' })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    return this.ingredientService.findAllPaginated(pageNumber, limitNumber, search);
   }
 
   @Get(':id')
