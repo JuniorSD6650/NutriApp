@@ -25,42 +25,86 @@ interface Detection {
   };
 }
 
+interface PaginatedDetections {
+  data: Detection[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export default function DetectionsPage() {
   const [detections, setDetections] = useState<Detection[]>([]);
+  const [paginationInfo, setPaginationInfo] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
   const [searchName, setSearchName] = useState<string>('');
   const [selectedAlert, setSelectedAlert] = useState<string>('');
   const router = useRouter();
-
-  const detectionsPerPage = 10;
 
   useEffect(() => {
     fetchDetections();
   }, []);
 
-  const fetchDetections = async () => {
+  const fetchDetections = async (page: number = 1, search?: string, nivelAlerta?: string) => {
     try {
       setIsLoading(true);
-      const response = await api.get('/dashboard/all-detections');
-      setDetections(response.data);
+      
+      // Crear parámetros para la consulta paginada
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+      });
+      
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      if (nivelAlerta && nivelAlerta !== '') {
+        params.append('nivel_alerta', nivelAlerta);
+      }
+      
+      // Usar el endpoint paginado de detecciones
+      const response = await api.get(`/dashboard/all-detections-paginated?${params.toString()}`);
+      const result: PaginatedDetections = response.data;
+      
+      setDetections(result.data || []);
+      setPaginationInfo({
+        total: result.total || 0,
+        page: result.page || 1,
+        limit: result.limit || 10,
+        totalPages: result.totalPages || 0,
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar detecciones');
+      setDetections([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const filteredDetections = detections.filter(detection => {
-    if (searchName && !detection.nino.nombre.toLowerCase().includes(searchName.toLowerCase())) return false;
-    if (selectedAlert && detection.nivel_alerta !== selectedAlert) return false;
-    return true;
-  });
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= paginationInfo.totalPages) {
+      fetchDetections(newPage, searchName, selectedAlert);
+    }
+  };
 
-  const totalPages = Math.ceil(filteredDetections.length / detectionsPerPage);
-  const startIndex = (currentPage - 1) * detectionsPerPage;
-  const currentDetections = filteredDetections.slice(startIndex, startIndex + detectionsPerPage);
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchName(value);
+    fetchDetections(1, value, selectedAlert); // Buscar inmediatamente
+  };
+
+  const handleAlertChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    setSelectedAlert(value);
+    fetchDetections(1, searchName, value); // Aplicar filtro inmediatamente
+  };
 
   const getAlertColor = (nivel: string) => {
     switch(nivel) {
@@ -94,16 +138,26 @@ export default function DetectionsPage() {
     setSelectedDetection(null);
   };
 
-  if (isLoading) {
-    return <div className="text-center">Cargando detecciones...</div>;
+  if (isLoading && detections.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        <span className="ml-2">Cargando detecciones...</span>
+      </div>
+    );
   }
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">👁️ Detecciones con IA</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">👁️ Detecciones con IA</h1>
+          <p className="text-sm text-gray-600 mt-1">
+            Análisis automático de mucosa ocular para detección temprana de anemia
+          </p>
+        </div>
         <div className="text-sm text-gray-500">
-          Total: {filteredDetections.length} detecciones
+          Total: {paginationInfo.total} detecciones
         </div>
       </div>
 
@@ -113,31 +167,43 @@ export default function DetectionsPage() {
         </div>
       )}
 
+      {/* Información sobre el sistema */}
+      <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start">
+          <div className="text-2xl mr-3">🤖</div>
+          <div>
+            <h3 className="text-lg font-medium text-purple-900">Sistema de Detección IA</h3>
+            <p className="text-sm text-purple-700 mt-1">
+              Estos registros provienen del análisis automático de fotos de mucosa ocular utilizando inteligencia artificial. 
+              El sistema detecta signos tempranos de anemia mediante análisis de color y textura.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Filtros */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="flex items-center space-x-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-sm font-medium text-gray-700">Buscar por nombre del niño:</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Buscar por nombre del niño:
+            </label>
             <input
               type="text"
               value={searchName}
-              onChange={(e) => {
-                setSearchName(e.target.value);
-                setCurrentPage(1);
-              }}
-              placeholder="Escribe el nombre del niño..."
-              className="ml-2 border border-gray-300 rounded-md px-3 py-2 text-sm w-64"
+              onChange={handleSearchChange}
+              placeholder="Nombre del niño..."
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </div>
           <div>
-            <label className="text-sm font-medium text-gray-700">Nivel de alerta:</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nivel de alerta:
+            </label>
             <select
               value={selectedAlert}
-              onChange={(e) => {
-                setSelectedAlert(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="ml-2 border border-gray-300 rounded-md px-3 py-2 text-sm"
+              onChange={handleAlertChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
             >
               <option value="">Todos los niveles</option>
               <option value="alta">Alta</option>
@@ -149,96 +215,148 @@ export default function DetectionsPage() {
       </div>
 
       {/* Lista de detecciones */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {currentDetections.map((detection) => (
-            <li 
-              key={detection.id}
-              onClick={() => handleDetectionClick(detection)}
-              className="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
-            >
-              <div className="px-4 py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 h-12 w-12">
-                      <img
-                        className="h-12 w-12 rounded-lg object-cover"
-                        src={detection.url_foto || '/placeholder-eye.jpg'}
-                        alt="Detección ocular"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5GDPC90ZXh0Pgo8L3N2Zz4K';
-                        }}
-                      />
-                    </div>
-                    <div className="ml-4 flex-1">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">
-                            {detection.nino.nombre}
+      <div className="bg-white shadow overflow-hidden sm:rounded-md mb-6">
+        {detections.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {detections.map((detection) => (
+              <li 
+                key={detection.id}
+                onClick={() => handleDetectionClick(detection)}
+                className="cursor-pointer hover:bg-gray-50 transition-colors duration-150"
+              >
+                <div className="px-4 py-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 h-12 w-12">
+                        <img
+                          className="h-12 w-12 rounded-lg object-cover"
+                          src={detection.url_foto || '/placeholder-eye.jpg'}
+                          alt="Detección ocular"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBmaWxsPSIjRjNGNEY2Ii8+Cjx0ZXh0IHg9IjIwIiB5PSIyNSIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOUI5QjlCIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj7wn5GDPC90ZXh0Pgo8L3N2Zz4K';
+                          }}
+                        />
+                      </div>
+                      <div className="ml-4 flex-1">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900 flex items-center">
+                              {detection.nino.nombre}
+                              <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                IA
+                              </span>
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {new Date(detection.fecha).toLocaleDateString('es-ES', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </div>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(detection.fecha).toLocaleDateString('es-ES', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
+                          <div className="flex items-center space-x-2">
+                            <div className={`w-3 h-3 rounded-full ${getResultColor(detection.resultado_ia)}`}></div>
+                            <span className="text-sm font-medium text-gray-900 capitalize">
+                              {detection.resultado_ia.replace('_', ' ')}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-3 h-3 rounded-full ${getResultColor(detection.resultado_ia)}`}></div>
-                          <span className="text-sm font-medium text-gray-900 capitalize">
-                            {detection.resultado_ia.replace('_', ' ')}
+                        <div className="mt-2 flex items-center justify-between">
+                          <div className="flex space-x-4 text-xs text-gray-500">
+                            <span>Confianza: {detection.confianza_ia}%</span>
+                            <span>Color: {detection.parametros_detectados?.color_mucosa || 'N/A'}</span>
+                            <span>Índice palidez: {detection.parametros_detectados?.indice_palidez?.toFixed(1) || 'N/A'}</span>
+                          </div>
+                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getAlertColor(detection.nivel_alerta)}`}>
+                            Alerta {detection.nivel_alerta}
                           </span>
                         </div>
                       </div>
-                      <div className="mt-2 flex items-center justify-between">
-                        <div className="flex space-x-4 text-xs text-gray-500">
-                          <span>Confianza: {detection.confianza_ia}%</span>
-                          <span>Color: {detection.parametros_detectados.color_mucosa}</span>
-                          <span>Índice palidez: {detection.parametros_detectados.indice_palidez.toFixed(1)}</span>
-                        </div>
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full border ${getAlertColor(detection.nivel_alerta)}`}>
-                          Alerta {detection.nivel_alerta}
-                        </span>
+                      <div className="ml-4 text-gray-400">
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                        </svg>
                       </div>
-                    </div>
-                    <div className="ml-4 text-gray-400">
-                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-                      </svg>
                     </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-
-        {currentDetections.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No hay detecciones disponibles
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            <div className="text-4xl mb-4">👁️</div>
+            <p className="text-lg mb-2">No hay detecciones de IA disponibles</p>
+            <p className="text-sm">Los registros aparecerán aquí cuando se analicen fotos de mucosa ocular con IA</p>
           </div>
         )}
       </div>
 
       {/* Paginación */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex justify-center">
-          <nav className="flex space-x-2">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={`px-3 py-2 text-sm rounded-md ${
-                  currentPage === page
-                    ? 'bg-purple-600 text-white'
-                    : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50'
-                }`}
-              >
-                {page}
-              </button>
-            ))}
-          </nav>
+      {paginationInfo.totalPages > 1 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => handlePageChange(paginationInfo.page - 1)}
+              disabled={paginationInfo.page === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => handlePageChange(paginationInfo.page + 1)}
+              disabled={paginationInfo.page === paginationInfo.totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Siguiente
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Mostrando{' '}
+                <span className="font-medium">
+                  {(paginationInfo.page - 1) * paginationInfo.limit + 1}
+                </span>{' '}
+                a{' '}
+                <span className="font-medium">
+                  {Math.min(paginationInfo.page * paginationInfo.limit, paginationInfo.total)}
+                </span>{' '}
+                de{' '}
+                <span className="font-medium">{paginationInfo.total}</span> registros
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+                {Array.from({ length: Math.min(5, paginationInfo.totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (paginationInfo.totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (paginationInfo.page <= 3) {
+                    pageNumber = i + 1;
+                  } else if (paginationInfo.page >= paginationInfo.totalPages - 2) {
+                    pageNumber = paginationInfo.totalPages - 4 + i;
+                  } else {
+                    pageNumber = paginationInfo.page - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        pageNumber === paginationInfo.page
+                          ? 'z-10 bg-purple-50 border-purple-500 text-purple-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
         </div>
       )}
 

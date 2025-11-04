@@ -15,10 +15,9 @@ import { MealLogModule } from './meal-log/meal-log.module';
 import { AgeRangeModule } from './age-range/age-range.module';
 import { PlateTypeModule } from './plate-type/plate-type.module';
 
-// Importar todas las entidades
+// Importar todas las entidades (sin RegistroComida)
 import { User } from './auth/entities/user.entity';
 import { Nino } from './ninos/entities/nino.entity';
-import { RegistroComida } from './registros/entities/registro-comida.entity';
 import { RegistroDeteccionTemprana } from './registros/entities/registro-deteccion-temprana.entity';
 import { Ingredient } from './ingredient/entities/ingredient.entity';
 import { Dish } from './dish/entities/dish.entity';
@@ -44,7 +43,6 @@ import { MealLog } from './meal-log/entities/meal-log.entity';
       entities: [
         User,
         Nino,
-        RegistroComida,
         RegistroDeteccionTemprana,
         Ingredient,
         Dish,

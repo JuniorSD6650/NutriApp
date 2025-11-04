@@ -113,9 +113,6 @@ export default function DashboardPage() {
       case 'children':
         router.push('/dashboard/children');
         break;
-      case 'meals':
-        router.push('/dashboard/meals');
-        break;
       case 'detections':
         router.push('/dashboard/detections');
         break;
@@ -202,8 +199,8 @@ export default function DashboardPage() {
         Bienvenido, {user?.nombre || user?.email}
       </h1>
       
-      {/* Stats Cards Principales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      {/* Stats Cards Principales - Solo 3 cards ahora */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
         <div 
           onClick={() => handleCardClick('users')}
           className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-200"
@@ -255,31 +252,6 @@ export default function DashboardPage() {
         </div>
 
         <div 
-          onClick={() => handleCardClick('meals')}
-          className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-200"
-        >
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
-                  <span className="text-white text-sm font-medium">🍎</span>
-                </div>
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Registros de Comida
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats?.totalMealRecords || 0}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div 
           onClick={() => handleCardClick('detections')}
           className="bg-white overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-shadow duration-200"
         >
@@ -308,7 +280,7 @@ export default function DashboardPage() {
       {/* Nuevas Stats Cards del Sistema de Nutrición */}
       <div className="mb-6">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">🍽️ Sistema de Nutrición Avanzado</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div 
             onClick={() => handleCardClick('ingredients')}
             className="bg-gradient-to-br from-orange-50 to-orange-100 overflow-hidden shadow rounded-lg cursor-pointer hover:shadow-lg transition-all duration-200 border border-orange-200"
@@ -348,7 +320,7 @@ export default function DashboardPage() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-indigo-700 truncate">
-                      Platillos
+                      Platillos & Recetas
                     </dt>
                     <dd className="text-lg font-medium text-indigo-900">
                       {nutritionStats?.totalDishes || 0}
@@ -373,7 +345,7 @@ export default function DashboardPage() {
                 <div className="ml-5 w-0 flex-1">
                   <dl>
                     <dt className="text-sm font-medium text-emerald-700 truncate">
-                      Meal Logs
+                      Cálculo Nutricional
                     </dt>
                     <dd className="text-lg font-medium text-emerald-900">
                       {nutritionStats?.totalMealLogs || 0}
@@ -405,51 +377,6 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Accesos Rápidos */}
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">⚡ Accesos Rápidos</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button
-            onClick={() => handleCardClick('ingredients')}
-            className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-orange-500"
-          >
-            <div className="flex items-center">
-              <div className="text-3xl mr-4">🥘</div>
-              <div className="text-left">
-                <h3 className="text-lg font-medium text-gray-900">Gestionar Ingredientes</h3>
-                <p className="text-sm text-gray-600">Base de datos nutricional</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleCardClick('dishes')}
-            className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-indigo-500"
-          >
-            <div className="flex items-center">
-              <div className="text-3xl mr-4">🍽️</div>
-              <div className="text-left">
-                <h3 className="text-lg font-medium text-gray-900">Crear Platillos</h3>
-                <p className="text-sm text-gray-600">Recetas y composiciones</p>
-              </div>
-            </div>
-          </button>
-
-          <button
-            onClick={() => handleCardClick('meal-logs')}
-            className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow border-l-4 border-emerald-500"
-          >
-            <div className="flex items-center">
-              <div className="text-3xl mr-4">📊</div>
-              <div className="text-left">
-                <h3 className="text-lg font-medium text-gray-900">Análisis Nutricional</h3>
-                <p className="text-sm text-gray-600">Cálculo automático</p>
-              </div>
-            </div>
-          </button>
         </div>
       </div>
 

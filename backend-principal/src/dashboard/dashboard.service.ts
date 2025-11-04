@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Nino } from '../ninos/entities/nino.entity';
-import { RegistroComida } from '../registros/entities/registro-comida.entity';
 import { RegistroDeteccionTemprana } from '../registros/entities/registro-deteccion-temprana.entity';
 
 @Injectable()
@@ -13,28 +12,18 @@ export class DashboardService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Nino)
     private readonly ninoRepository: Repository<Nino>,
-    @InjectRepository(RegistroComida)
-    private readonly comidaRepository: Repository<RegistroComida>,
     @InjectRepository(RegistroDeteccionTemprana)
     private readonly deteccionTempranaRepository: Repository<RegistroDeteccionTemprana>,
   ) {}
 
   async getStats() {
-    const [totalUsers, totalChildren, totalMealRecords, totalEarlyDetections] = await Promise.all([
+    const [totalUsers, totalChildren, totalEarlyDetections] = await Promise.all([
       this.userRepository.count(),
       this.ninoRepository.count(),
-      this.comidaRepository.count(),
       this.deteccionTempranaRepository.count(),
     ]);
 
-    // Actividad reciente (últimos 10 registros de comida)
-    const recentActivity = await this.comidaRepository.find({
-      relations: ['nino'],
-      order: { fecha: 'DESC' },
-      take: 10,
-    });
-
-    // Alertas (detecciones con nivel alto)
+    // Solo alertas de detecciones con nivel alto
     const alerts = await this.deteccionTempranaRepository.find({
       where: { nivel_alerta: 'alta' },
       relations: ['nino'],
@@ -45,13 +34,9 @@ export class DashboardService {
     return {
       totalUsers,
       totalChildren,
-      totalMealRecords,
+      totalMealRecords: 0, // Ya no hay registros de comida
       totalEarlyDetections,
-      recentActivity: recentActivity.map(record => ({
-        description: `Registro de comida para ${record.nino.nombre}`,
-        date: record.fecha,
-        hierro: record.hierro_mg,
-      })),
+      recentActivity: [], // Ya no hay actividad reciente de comidas
       alerts: alerts.map(alert => ({
         message: `${alert.nino.nombre}: ${alert.observaciones}`,
         date: alert.fecha,
@@ -61,22 +46,11 @@ export class DashboardService {
   }
 
   async getNutritionData() {
-    // Obtener datos de nutrición
-    const totalMeals = await this.comidaRepository.count();
-    const avgIron = await this.comidaRepository
-      .createQueryBuilder('meal')
-      .select('AVG(meal.hierro_mg)', 'avgIron')
-      .getRawOne();
-
-    const avgCalories = await this.comidaRepository
-      .createQueryBuilder('meal')
-      .select('AVG(meal.calorias)', 'avgCalories')
-      .getRawOne();
-
+    // Retornar datos vacíos ya que no hay registros de comida
     return {
-      totalMeals,
-      averageIron: Number(avgIron.avgIron || 0).toFixed(2),
-      averageCalories: Number(avgCalories.avgCalories || 0).toFixed(0),
+      totalMeals: 0,
+      averageIron: '0.0',
+      averageCalories: '0',
     };
   }
 
@@ -100,6 +74,49 @@ export class DashboardService {
       order: { fecha: 'DESC' },
       take: 50,
     });
+  }
+
+  async getAllDetectionsPaginated(page: number = 1, limit: number = 10, search?: string, nivelAlerta?: string): Promise<{
+    data: RegistroDeteccionTemprana[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.deteccionTempranaRepository
+      .createQueryBuilder('detection')
+      .leftJoinAndSelect('detection.nino', 'nino')
+      .orderBy('detection.fecha', 'DESC');
+
+    // Aplicar filtro de búsqueda por nombre del niño
+    if (search && search.trim()) {
+      queryBuilder.where('LOWER(nino.nombre) LIKE LOWER(:search)', { search: `%${search.trim()}%` });
+    }
+
+    // Aplicar filtro por nivel de alerta
+    if (nivelAlerta && nivelAlerta !== '') {
+      queryBuilder.andWhere('detection.nivel_alerta = :nivelAlerta', { nivelAlerta });
+    }
+
+    // Contar total de registros
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async getEarlyDetectionProgress() {

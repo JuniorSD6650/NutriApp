@@ -4,7 +4,6 @@ import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { User } from '../auth/entities/user.entity';
 import { Nino } from '../ninos/entities/nino.entity';
-import { RegistroComida } from '../registros/entities/registro-comida.entity';
 import { RegistroDeteccionTemprana } from '../registros/entities/registro-deteccion-temprana.entity';
 
 @Module({
@@ -12,7 +11,6 @@ import { RegistroDeteccionTemprana } from '../registros/entities/registro-detecc
     TypeOrmModule.forFeature([
       User,
       Nino,
-      RegistroComida,
       RegistroDeteccionTemprana,
     ]),
   ],

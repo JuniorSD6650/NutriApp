@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from '../auth/entities/user.entity';
 import { Nino } from '../ninos/entities/nino.entity';
-import { RegistroComida } from '../registros/entities/registro-comida.entity';
 import { RegistroDeteccionTemprana } from '../registros/entities/registro-deteccion-temprana.entity';
 import { Ingredient } from '../ingredient/entities/ingredient.entity';
 import { Dish } from '../dish/entities/dish.entity';
@@ -21,8 +20,6 @@ export class SeedersService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Nino)
     private readonly ninoRepository: Repository<Nino>,
-    @InjectRepository(RegistroComida)
-    private readonly comidaRepository: Repository<RegistroComida>,
     @InjectRepository(RegistroDeteccionTemprana)
     private readonly deteccionTempranaRepository: Repository<RegistroDeteccionTemprana>,
     @InjectRepository(Ingredient)
@@ -61,8 +58,7 @@ export class SeedersService {
     const users = await this.seedUsers();
     const ninos = await this.seedNinos(users);
     
-    // Crear registros existentes
-    await this.seedRegistrosComida(ninos);
+    // Solo mantener detecciones tempranas
     await this.seedRegistrosDeteccionTemprana(ninos);
     
     // Crear meal logs con la nueva lógica
@@ -83,7 +79,6 @@ export class SeedersService {
       await this.dailyRequirementRepository.clear();
       await this.ageRangeRepository.clear();
       await this.deteccionTempranaRepository.clear();
-      await this.comidaRepository.clear();
       await this.ninoRepository.clear();
       await this.userRepository.clear();
       console.log('✓ Datos limpiados exitosamente');
@@ -359,57 +354,6 @@ export class SeedersService {
     }
 
     return savedNinos;
-  }
-
-  private async seedRegistrosComida(ninos: Nino[]) {
-    console.log('🍎 Creando registros de comida...');
-    
-    const comidas = [
-      { hierro: 8.5, calorias: 450, proteinas: 25, carbohidratos: 55, grasas: 15 },
-      { hierro: 6.2, calorias: 380, proteinas: 20, carbohidratos: 48, grasas: 12 },
-      { hierro: 7.8, calorias: 420, proteinas: 22, carbohidratos: 52, grasas: 14 },
-      { hierro: 5.5, calorias: 320, proteinas: 18, carbohidratos: 42, grasas: 10 },
-      { hierro: 9.2, calorias: 480, proteinas: 28, carbohidratos: 58, grasas: 16 },
-      { hierro: 4.8, calorias: 290, proteinas: 15, carbohidratos: 38, grasas: 8 },
-      { hierro: 7.0, calorias: 400, proteinas: 24, carbohidratos: 50, grasas: 13 },
-      { hierro: 8.8, calorias: 460, proteinas: 26, carbohidratos: 56, grasas: 15 },
-    ];
-
-    // Crear múltiples registros por niño a lo largo de varios meses
-    for (let ninoIndex = 0; ninoIndex < ninos.length; ninoIndex++) {
-      const nino = ninos[ninoIndex];
-      
-      // Crear registros para los últimos 3 meses
-      for (let mes = 0; mes < 3; mes++) {
-        for (let dia = 0; dia < 8; dia++) {
-          const fecha = new Date();
-          fecha.setMonth(fecha.getMonth() - mes);
-          fecha.setDate(fecha.getDate() - (dia * 4)); // Cada 4 días
-          
-          const comidaIndex = (ninoIndex + mes + dia) % comidas.length;
-          const comida = comidas[comidaIndex];
-          
-          const registro = this.comidaRepository.create({
-            url_foto: `https://example.com/photos/meal_${ninoIndex}_${mes}_${dia}.jpg`,
-            fecha,
-            hierro_mg: comida.hierro + (Math.random() * 2 - 1), // Variación aleatoria
-            calorias: comida.calorias + Math.floor(Math.random() * 100 - 50),
-            json_nutrientes: {
-              proteinas: comida.proteinas,
-              carbohidratos: comida.carbohidratos,
-              grasas: comida.grasas,
-              fibra: 5 + Math.floor(Math.random() * 5),
-              vitamina_c: 30 + Math.floor(Math.random() * 20),
-              calcio: 80 + Math.floor(Math.random() * 50),
-            },
-            nino,
-          });
-          
-          await this.comidaRepository.save(registro);
-        }
-      }
-      console.log(`✓ Registros de comida creados para: ${nino.nombre}`);
-    }
   }
 
   private async seedRegistrosDeteccionTemprana(ninos: Nino[]) {
