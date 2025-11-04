@@ -110,10 +110,10 @@ export default function DashboardPage() {
   const handleCardClick = (cardType: string) => {
     switch(cardType) {
       case 'users':
-        router.push('/dashboard/users');
+        router.push('/dashboard/products'); // Redirigir a gestión de usuarios
         break;
       case 'children':
-        router.push('/dashboard/children');
+        router.push('/dashboard/products'); // Redirigir a gestión de usuarios
         break;
       case 'detections':
         router.push('/dashboard/detections');
