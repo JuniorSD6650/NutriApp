@@ -60,6 +60,48 @@ export class DashboardService {
     };
   }
 
+  async getNutritionData() {
+    // Obtener datos de nutrición
+    const totalMeals = await this.comidaRepository.count();
+    const avgIron = await this.comidaRepository
+      .createQueryBuilder('meal')
+      .select('AVG(meal.hierro_mg)', 'avgIron')
+      .getRawOne();
+
+    const avgCalories = await this.comidaRepository
+      .createQueryBuilder('meal')
+      .select('AVG(meal.calorias)', 'avgCalories')
+      .getRawOne();
+
+    return {
+      totalMeals,
+      averageIron: Number(avgIron.avgIron || 0).toFixed(2),
+      averageCalories: Number(avgCalories.avgCalories || 0).toFixed(0),
+    };
+  }
+
+  async getAllUsers() {
+    return this.userRepository.find({
+      select: ['id', 'nombre', 'email', 'rol', 'created_at'],
+      order: { created_at: 'DESC' },
+    });
+  }
+
+  async getAllChildren() {
+    return this.ninoRepository.find({
+      relations: ['madre'],
+      order: { nombre: 'ASC' },
+    });
+  }
+
+  async getAllDetections() {
+    return this.deteccionTempranaRepository.find({
+      relations: ['nino'],
+      order: { fecha: 'DESC' },
+      take: 50,
+    });
+  }
+
   async getEarlyDetectionProgress() {
     // Obtener datos de los últimos 6 meses agrupados por mes
     const sixMonthsAgo = new Date();

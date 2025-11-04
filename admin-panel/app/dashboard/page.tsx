@@ -70,17 +70,21 @@ export default function DashboardPage() {
       const [ingredientsRes, dishesRes, mealLogsRes] = await Promise.all([
         api.get('/ingredients'),
         api.get('/dishes'),
-        api.get('/meal-logs'),
+        api.get('/meal-logs?limit=1000'), // Obtener un límite alto para contar todos
       ]);
 
-      const avgIron = mealLogsRes.data.length > 0 
-        ? mealLogsRes.data.reduce((sum: number, log: any) => sum + log.iron_consumed_mg, 0) / mealLogsRes.data.length
+      // Ahora mealLogsRes.data tiene la estructura paginada
+      const mealLogsData = mealLogsRes.data.data || []; // Extraer el array de datos
+      const totalMealLogs = mealLogsRes.data.total || 0; // Usar el total de la paginación
+
+      const avgIron = mealLogsData.length > 0 
+        ? mealLogsData.reduce((sum: number, log: any) => sum + (Number(log.iron_consumed_mg) || 0), 0) / mealLogsData.length
         : 0;
 
       setNutritionStats({
         totalIngredients: ingredientsRes.data.length,
         totalDishes: dishesRes.data.length,
-        totalMealLogs: mealLogsRes.data.length,
+        totalMealLogs: totalMealLogs, // Usar el total correcto
         averageIronPerMeal: avgIron,
       });
       

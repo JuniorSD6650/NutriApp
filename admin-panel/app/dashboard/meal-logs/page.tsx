@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import api from '../../../lib/api';
-import { PlusIcon, EyeIcon, TrashIcon, CalculatorIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, EyeIcon, TrashIcon, CalculatorIcon, ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
 import { useSweetAlert } from '../../../hooks/useSweetAlert';
 import { Bar, Line } from 'react-chartjs-2';
 import {
@@ -58,6 +58,14 @@ interface DetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   mealLog: MealLog | null;
+}
+
+interface PaginatedMealLogs {
+  data: MealLog[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 const CreateMealLogModal = ({ isOpen, onClose, onSave }: MealLogModalProps) => {
@@ -421,41 +429,78 @@ const DetailModal = ({ isOpen, onClose, mealLog }: DetailModalProps) => {
 
 export default function MealLogsPage() {
   const [mealLogs, setMealLogs] = useState<MealLog[]>([]);
+  const [paginationInfo, setPaginationInfo] = useState({
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedMealLog, setSelectedMealLog] = useState<MealLog | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPatient, setSelectedPatient] = useState('');
-  const [patients, setPatients] = useState<Patient[]>([]);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { showSuccess, showError, showConfirmDelete, showLoading, showToast } = useSweetAlert();
 
-  useEffect(() => {
-    fetchMealLogs();
-    fetchPatients();
-  }, []);
+  // Función debounced para búsqueda
+  const debouncedSearch = useCallback((term: string) => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    searchTimeoutRef.current = setTimeout(() => {
+      // Solo buscar si hay al menos 3 caracteres o si está vacío (para mostrar todos)
+      if (term.trim().length >= 3 || term.trim().length === 0) {
+        fetchMealLogs(1, term); // Resetear a página 1 en nueva búsqueda
+      }
+    }, 500); // Esperar 500ms después de que el usuario deje de escribir
+  }, []); // Sin dependencias para evitar recreación
 
-  const fetchMealLogs = async () => {
+  const fetchMealLogs = useCallback(async (page: number = 1, search?: string) => {
     try {
       setIsLoading(true);
-      const response = await api.get('/meal-logs');
-      setMealLogs(response.data);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: '10',
+      });
+      
+      if (search && search.trim()) {
+        params.append('search', search.trim());
+      }
+      
+      const response = await api.get(`/meal-logs?${params.toString()}`);
+      const result: PaginatedMealLogs = response.data;
+      
+      setMealLogs(result.data);
+      setPaginationInfo({
+        total: result.total,
+        page: result.page,
+        limit: result.limit,
+        totalPages: result.totalPages,
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Error al cargar meal logs');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
-  const fetchPatients = async () => {
-    try {
-      const response = await api.get('/dashboard/children');
-      setPatients(response.data);
-    } catch (error) {
-      console.error('Error fetching patients:', error);
-    }
-  };
+  useEffect(() => {
+    fetchMealLogs();
+  }, [fetchMealLogs]);
+
+  useEffect(() => {
+    debouncedSearch(searchTerm);
+    
+    // Cleanup function para limpiar el timeout cuando el componente se desmonte
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm, debouncedSearch]);
 
   const handleCreate = () => {
     setIsCreateModalOpen(true);
@@ -474,7 +519,7 @@ export default function MealLogsPage() {
         4000
       );
       
-      fetchMealLogs();
+      fetchMealLogs(paginationInfo.page, searchTerm);
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Error al crear meal log';
       await showError('Error en el cálculo', errorMessage);
@@ -500,7 +545,7 @@ export default function MealLogsPage() {
       try {
         await api.delete(`/meal-logs/${id}`);
         await showToast('success', 'Registro eliminado exitosamente');
-        fetchMealLogs();
+        fetchMealLogs(paginationInfo.page, searchTerm);
       } catch (err: any) {
         const errorMessage = err.response?.data?.message || 'Error al eliminar meal log';
         await showError('Error al eliminar', errorMessage);
@@ -509,22 +554,25 @@ export default function MealLogsPage() {
     }
   };
 
-  const filteredMealLogs = mealLogs.filter(log => {
-    if (searchTerm && !log.patient.nombre.toLowerCase().includes(searchTerm.toLowerCase()) && 
-        !log.dish.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (selectedPatient && log.patient.id !== selectedPatient) return false;
-    return true;
-  });
+  const handlePageChange = (newPage: number) => {
+    if (newPage >= 1 && newPage <= paginationInfo.totalPages) {
+      fetchMealLogs(newPage, searchTerm);
+    }
+  };
 
-  // Preparar datos para gráficos
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+  };
+
+  // Preparar datos para gráficos (usar solo los datos actuales visibles)
   const chartData = {
-    labels: filteredMealLogs.slice(0, 10).map(log => 
+    labels: mealLogs.slice(0, 10).map(log => 
       `${log.patient.nombre.split(' ')[0]} - ${new Date(log.date).toLocaleDateString()}`
     ),
     datasets: [
       {
         label: 'Hierro consumido (mg)',
-        data: filteredMealLogs.slice(0, 10).map(log => Number(log.iron_consumed_mg) || 0),
+        data: mealLogs.slice(0, 10).map(log => Number(log.iron_consumed_mg) || 0),
         backgroundColor: 'rgba(239, 68, 68, 0.8)',
         borderColor: 'rgb(239, 68, 68)',
         borderWidth: 1,
@@ -533,20 +581,20 @@ export default function MealLogsPage() {
   };
 
   const lineChartData = {
-    labels: filteredMealLogs.slice(0, 10).map(log => 
+    labels: mealLogs.slice(0, 10).map(log => 
       new Date(log.date).toLocaleDateString()
     ),
     datasets: [
       {
         label: 'Hierro promedio (mg)',
-        data: filteredMealLogs.slice(0, 10).map(log => Number(log.iron_consumed_mg) || 0),
+        data: mealLogs.slice(0, 10).map(log => Number(log.iron_consumed_mg) || 0),
         borderColor: 'rgb(239, 68, 68)',
         backgroundColor: 'rgba(239, 68, 68, 0.1)',
         tension: 0.4,
       },
       {
         label: 'Calorías (÷10)',
-        data: filteredMealLogs.slice(0, 10).map(log => (Number(log.calories_consumed) || 0) / 10),
+        data: mealLogs.slice(0, 10).map(log => (Number(log.calories_consumed) || 0) / 10),
         borderColor: 'rgb(245, 158, 11)',
         backgroundColor: 'rgba(245, 158, 11, 0.1)',
         tension: 0.4,
@@ -554,8 +602,13 @@ export default function MealLogsPage() {
     ],
   };
 
-  if (isLoading) {
-    return <div className="text-center">Cargando meal logs...</div>;
+  if (isLoading && mealLogs.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+        <span className="ml-2">Cargando meal logs...</span>
+      </div>
+    );
   }
 
   return (
@@ -577,182 +630,280 @@ export default function MealLogsPage() {
         </div>
       )}
 
-      {/* Filtros */}
+      {/* Buscador */}
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Buscar por paciente o platillo:
-            </label>
+        <div className="max-w-md">
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Buscar por paciente o platillo:
+          </label>
+          <div className="relative">
             <input
               type="text"
-              placeholder="Buscar..."
+              placeholder="Escriba al menos 3 caracteres para buscar..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              onChange={handleSearchChange}
+              className="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
+            {isLoading && (
+              <div className="absolute right-3 top-2.5">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+              </div>
+            )}
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Filtrar por paciente:
-            </label>
-            <select
-              value={selectedPatient}
-              onChange={(e) => setSelectedPatient(e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="">Todos los pacientes</option>
-              {patients.map((patient) => (
-                <option key={patient.id} value={patient.id}>
-                  {patient.nombre}
-                </option>
-              ))}
-            </select>
-          </div>
+          {searchTerm && (
+            <p className="text-xs text-gray-500 mt-1">
+              {searchTerm.trim().length < 3 ? (
+                `Escriba ${3 - searchTerm.trim().length} carácter(es) más para buscar`
+              ) : paginationInfo.total > 0 ? (
+                `Se encontraron ${paginationInfo.total} resultado(s)`
+              ) : (
+                'No se encontraron resultados'
+              )}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Estadísticas rápidas */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
-          <div className="text-2xl font-bold text-green-600">{filteredMealLogs.length}</div>
+          <div className="text-2xl font-bold text-green-600">{paginationInfo.total}</div>
           <div className="text-sm text-gray-600">Total Registros</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-red-600">
-            {filteredMealLogs.length > 0 ? (filteredMealLogs.reduce((sum, log) => sum + (Number(log.iron_consumed_mg) || 0), 0) / filteredMealLogs.length).toFixed(1) : '0.0'}mg
+            {mealLogs.length > 0 ? (mealLogs.reduce((sum, log) => sum + (Number(log.iron_consumed_mg) || 0), 0) / mealLogs.length).toFixed(1) : '0.0'}mg
           </div>
-          <div className="text-sm text-gray-600">Hierro Promedio</div>
+          <div className="text-sm text-gray-600">Hierro Promedio (Página)</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-yellow-600">
-            {filteredMealLogs.length > 0 ? Math.round(filteredMealLogs.reduce((sum, log) => sum + (Number(log.calories_consumed) || 0), 0) / filteredMealLogs.length) : 0}
+            {mealLogs.length > 0 ? Math.round(mealLogs.reduce((sum, log) => sum + (Number(log.calories_consumed) || 0), 0) / mealLogs.length) : 0}
           </div>
-          <div className="text-sm text-gray-600">Calorías Promedio</div>
+          <div className="text-sm text-gray-600">Calorías Promedio (Página)</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-blue-600">
-            {filteredMealLogs.length > 0 ? Math.round(filteredMealLogs.reduce((sum, log) => sum + (Number(log.grams_served) || 0), 0) / filteredMealLogs.length) : 0}g
+            {mealLogs.length > 0 ? Math.round(mealLogs.reduce((sum, log) => sum + (Number(log.grams_served) || 0), 0) / mealLogs.length) : 0}g
           </div>
-          <div className="text-sm text-gray-600">Porción Promedio</div>
+          <div className="text-sm text-gray-600">Porción Promedio (Página)</div>
         </div>
       </div>
 
       {/* Gráficos */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            📊 Hierro Consumido por Registro
-          </h3>
-          <div className="h-64">
-            <Bar 
-              data={chartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'top',
+      {mealLogs.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              📊 Hierro Consumido por Registro
+            </h3>
+            <div className="h-64">
+              <Bar 
+                data={chartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                    },
                   },
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
-                    title: {
-                      display: true,
-                      text: 'Hierro (mg)'
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                      title: {
+                        display: true,
+                        text: 'Hierro (mg)'
+                      }
                     }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            📈 Tendencia Nutricional
-          </h3>
-          <div className="h-64">
-            <Line 
-              data={lineChartData}
-              options={{
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                  legend: {
-                    position: 'top',
+          <div className="bg-white p-6 rounded-lg shadow">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              📈 Tendencia Nutricional
+            </h3>
+            <div className="h-64">
+              <Line 
+                data={lineChartData}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      position: 'top',
+                    },
                   },
-                },
-                scales: {
-                  y: {
-                    beginAtZero: true,
+                  scales: {
+                    y: {
+                      beginAtZero: true,
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Lista de meal logs */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <ul className="divide-y divide-gray-200">
-          {filteredMealLogs.map((log) => (
-            <li key={log.id} className="px-6 py-4 hover:bg-gray-50">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {log.patient.nombre} - {log.dish.name}
-                    </h3>
-                    <div className="flex items-center space-x-2">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                        {(Number(log.iron_consumed_mg) || 0).toFixed(1)}mg Fe
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                        {(Number(log.calories_consumed) || 0).toFixed(0)} kcal
-                      </span>
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {Number(log.grams_served) || 0}g
-                      </span>
+      <div className="bg-white shadow overflow-hidden sm:rounded-md mb-6">
+        {mealLogs.length > 0 ? (
+          <ul className="divide-y divide-gray-200">
+            {mealLogs.map((log) => (
+              <li key={log.id} className="px-6 py-4 hover:bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium text-gray-900">
+                        {log.patient.nombre} - {log.dish.name}
+                      </h3>
+                      <div className="flex items-center space-x-2">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                          {(Number(log.iron_consumed_mg) || 0).toFixed(1)}mg Fe
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                          {(Number(log.calories_consumed) || 0).toFixed(0)} kcal
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          {Number(log.grams_served) || 0}g
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-600">
+                      Calculado automáticamente el {new Date(log.date).toLocaleDateString('es-ES')}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Creado: {new Date(log.created_at).toLocaleDateString()} • 
+                      Edad: {new Date().getFullYear() - log.patient.birthYear} años
                     </div>
                   </div>
-                  <div className="mt-1 text-sm text-gray-600">
-                    Calculado automáticamente el {new Date(log.date).toLocaleDateString('es-ES')}
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Creado: {new Date(log.created_at).toLocaleDateString()} • 
-                    Edad: {new Date().getFullYear() - log.patient.birthYear} años
+                  <div className="ml-4 flex items-center space-x-2">
+                    <button
+                      onClick={() => handleViewDetail(log)}
+                      className="text-green-600 hover:text-green-900"
+                      title="Ver detalles del cálculo"
+                    >
+                      <EyeIcon className="h-5 w-5" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(log.id)}
+                      className="text-red-600 hover:text-red-900"
+                      title="Eliminar"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </div>
                 </div>
-                <div className="ml-4 flex items-center space-x-2">
-                  <button
-                    onClick={() => handleViewDetail(log)}
-                    className="text-green-600 hover:text-green-900"
-                    title="Ver detalles del cálculo"
-                  >
-                    <EyeIcon className="h-5 w-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(log.id)}
-                    className="text-red-600 hover:text-red-900"
-                    title="Eliminar"
-                  >
-                    <TrashIcon className="h-5 w-5" />
-                  </button>
-                </div>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="text-center py-12 text-gray-500">
+            {searchTerm ? (
+              <div>
+                <div className="text-4xl mb-4">🔍</div>
+                <p className="text-lg mb-2">No se encontraron resultados</p>
+                <p className="text-sm">Intenta con otro término de búsqueda</p>
               </div>
-            </li>
-          ))}
-        </ul>
-
-        {filteredMealLogs.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No se encontraron meal logs
+            ) : (
+              <div>
+                <div className="text-4xl mb-4">📊</div>
+                <p className="text-lg mb-2">No hay registros de comida</p>
+                <p className="text-sm">Crea el primer registro para comenzar</p>
+              </div>
+            )}
           </div>
         )}
       </div>
+
+      {/* Paginación */}
+      {paginationInfo.totalPages > 1 && (
+        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
+          <div className="flex-1 flex justify-between sm:hidden">
+            <button
+              onClick={() => handlePageChange(paginationInfo.page - 1)}
+              disabled={paginationInfo.page === 1}
+              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Anterior
+            </button>
+            <button
+              onClick={() => handlePageChange(paginationInfo.page + 1)}
+              disabled={paginationInfo.page === paginationInfo.totalPages}
+              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Siguiente
+            </button>
+          </div>
+          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm text-gray-700">
+                Mostrando{' '}
+                <span className="font-medium">
+                  {(paginationInfo.page - 1) * paginationInfo.limit + 1}
+                </span>{' '}
+                a{' '}
+                <span className="font-medium">
+                  {Math.min(paginationInfo.page * paginationInfo.limit, paginationInfo.total)}
+                </span>{' '}
+                de{' '}
+                <span className="font-medium">{paginationInfo.total}</span> registros
+              </p>
+            </div>
+            <div>
+              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                <button
+                  onClick={() => handlePageChange(paginationInfo.page - 1)}
+                  disabled={paginationInfo.page === 1}
+                  className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeftIcon className="h-5 w-5" />
+                </button>
+                
+                {/* Números de página */}
+                {Array.from({ length: Math.min(5, paginationInfo.totalPages) }, (_, i) => {
+                  let pageNumber;
+                  if (paginationInfo.totalPages <= 5) {
+                    pageNumber = i + 1;
+                  } else if (paginationInfo.page <= 3) {
+                    pageNumber = i + 1;
+                  } else if (paginationInfo.page >= paginationInfo.totalPages - 2) {
+                    pageNumber = paginationInfo.totalPages - 4 + i;
+                  } else {
+                    pageNumber = paginationInfo.page - 2 + i;
+                  }
+                  
+                  return (
+                    <button
+                      key={pageNumber}
+                      onClick={() => handlePageChange(pageNumber)}
+                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                        pageNumber === paginationInfo.page
+                          ? 'z-10 bg-green-50 border-green-500 text-green-600'
+                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  );
+                })}
+                
+                <button
+                  onClick={() => handlePageChange(paginationInfo.page + 1)}
+                  disabled={paginationInfo.page === paginationInfo.totalPages}
+                  className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRightIcon className="h-5 w-5" />
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CreateMealLogModal
         isOpen={isCreateModalOpen}

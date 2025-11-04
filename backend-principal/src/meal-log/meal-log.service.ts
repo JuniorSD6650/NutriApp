@@ -105,11 +105,46 @@ export class MealLogService {
     }
   }
 
-  async findAll(): Promise<MealLog[]> {
-    return this.mealLogRepository.find({
-      relations: ['patient', 'dish', 'dish.compositions', 'dish.compositions.ingredient'],
-      order: { date: 'DESC' },
-    });
+  async findAll(page: number = 1, limit: number = 10, search?: string): Promise<{
+    data: MealLog[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const queryBuilder = this.mealLogRepository
+      .createQueryBuilder('mealLog')
+      .leftJoinAndSelect('mealLog.patient', 'patient')
+      .leftJoinAndSelect('mealLog.dish', 'dish')
+      .orderBy('mealLog.date', 'DESC');
+
+    // Aplicar filtro de búsqueda si existe
+    if (search && search.trim()) {
+      queryBuilder.where(
+        '(LOWER(patient.nombre) LIKE LOWER(:search) OR LOWER(dish.name) LIKE LOWER(:search))',
+        { search: `%${search.trim()}%` }
+      );
+    }
+
+    // Contar total de registros (sin paginación)
+    const total = await queryBuilder.getCount();
+
+    // Aplicar paginación
+    const offset = (page - 1) * limit;
+    queryBuilder.skip(offset).take(limit);
+
+    // Obtener registros paginados
+    const data = await queryBuilder.getMany();
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      total,
+      page,
+      limit,
+      totalPages,
+    };
   }
 
   async findByPatient(patientId: string): Promise<MealLog[]> {

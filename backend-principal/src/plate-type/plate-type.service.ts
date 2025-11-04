@@ -29,4 +29,17 @@ export class PlateTypeService {
       order: { ageRange: { min_months: 'ASC' } },
     });
   }
+
+  async findOne(id: string): Promise<PlateType> {
+    const plateType = await this.plateTypeRepository.findOne({
+      where: { id },
+      relations: ['ageRange'],
+    });
+
+    if (!plateType) {
+      throw new NotFoundException(`Plate type with ID ${id} not found`);
+    }
+
+    return plateType;
+  }
 }

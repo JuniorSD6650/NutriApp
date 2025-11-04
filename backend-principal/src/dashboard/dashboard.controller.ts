@@ -31,7 +31,7 @@ export class DashboardController {
   @ApiOperation({ summary: 'Obtener lista de niños registrados' })
   @ApiResponse({ status: 200, description: 'Lista de niños' })
   async getChildren() {
-    return this.dashboardService.getAllChildren();
+    return this.dashboardService.getChildren();
   }
 
   @Get('activity')
@@ -50,14 +50,14 @@ export class DashboardController {
   @ApiOperation({ summary: 'Obtener progreso de detección temprana por meses' })
   @ApiResponse({ status: 200, description: 'Datos de progreso mensual' })
   async getEarlyDetectionProgress() {
-    return this.dashboardService.getEarlyDetectionProgressData();
+    return this.dashboardService.getEarlyDetectionProgress();
   }
 
   @Get('early-detection-distribution')
   @ApiOperation({ summary: 'Obtener distribución de resultados de detección temprana' })
   @ApiResponse({ status: 200, description: 'Distribución de resultados' })
   async getEarlyDetectionDistribution() {
-    return this.dashboardService.getEarlyDetectionDistributionData();
+    return this.dashboardService.getEarlyDetectionDistribution();
   }
 
   @Get('all-detections')

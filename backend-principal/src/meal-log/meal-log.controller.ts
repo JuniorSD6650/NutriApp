@@ -19,10 +19,19 @@ export class MealLogController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'Obtener todos los meal logs' })
-  @ApiResponse({ status: 200, description: 'Lista de meal logs' })
-  findAll() {
-    return this.mealLogService.findAll();
+  @ApiOperation({ summary: 'Obtener todos los meal logs con búsqueda y paginación' })
+  @ApiResponse({ status: 200, description: 'Lista paginada de meal logs' })
+  @ApiQuery({ name: 'page', required: false, description: 'Número de página (default: 1)' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Registros por página (default: 10)' })
+  @ApiQuery({ name: 'search', required: false, description: 'Buscar por nombre de paciente o platillo' })
+  findAll(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('search') search?: string,
+  ) {
+    const pageNumber = page ? parseInt(page, 10) : 1;
+    const limitNumber = limit ? parseInt(limit, 10) : 10;
+    return this.mealLogService.findAll(pageNumber, limitNumber, search);
   }
 
   @Get('patient/:patientId')

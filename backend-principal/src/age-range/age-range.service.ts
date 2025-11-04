@@ -28,4 +28,16 @@ export class AgeRangeService {
       order: { min_months: 'ASC' },
     });
   }
+
+  async findOne(id: string): Promise<AgeRange> {
+    const ageRange = await this.ageRangeRepository.findOne({
+      where: { id },
+    });
+
+    if (!ageRange) {
+      throw new NotFoundException(`Age range with ID ${id} not found`);
+    }
+
+    return ageRange;
+  }
 }
