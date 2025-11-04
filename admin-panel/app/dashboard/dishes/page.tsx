@@ -178,10 +178,13 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
 
   const fetchIngredients = async () => {
     try {
-      const response = await api.get('/ingredients');
-      setIngredients(response.data);
+      const response = await api.get('/ingredients?limit=1000'); // Usar endpoint paginado con límite alto
+      // Extraer datos del formato paginado
+      const ingredientsData = response.data.data || response.data; // Manejar ambos formatos
+      setIngredients(Array.isArray(ingredientsData) ? ingredientsData : []);
     } catch (error) {
       console.error('Error fetching ingredients:', error);
+      setIngredients([]); // Asegurar que sea un array vacío en caso de error
     }
   };
 
@@ -358,7 +361,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
                   className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="">Seleccionar ingrediente...</option>
-                  {ingredients.map((ingredient) => (
+                  {Array.isArray(ingredients) && ingredients.map((ingredient) => (
                     <option key={ingredient.id} value={ingredient.id}>
                       {ingredient.name}
                     </option>
