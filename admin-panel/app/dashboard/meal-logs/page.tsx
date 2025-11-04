@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
 import { PlusIcon, EyeIcon, TrashIcon, CalculatorIcon } from '@heroicons/react/24/outline';
+import { useSweetAlert } from '../../../hooks/useSweetAlert';
 import { Bar, Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -428,6 +429,7 @@ export default function MealLogsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPatient, setSelectedPatient] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
+  const { showSuccess, showError, showConfirmDelete, showLoading, showToast } = useSweetAlert();
 
   useEffect(() => {
     fetchMealLogs();
@@ -461,11 +463,22 @@ export default function MealLogsPage() {
 
   const handleSave = async (data: CreateMealLogData) => {
     try {
+      showLoading('Calculando nutrientes...', 'El sistema está analizando el platillo y calculando los valores nutricionales automáticamente');
+      
       await api.post('/meal-logs', data);
       setIsCreateModalOpen(false);
+      
+      await showSuccess(
+        '¡Cálculo completado!', 
+        'El registro de comida ha sido creado con cálculos nutricionales automáticos.',
+        4000
+      );
+      
       fetchMealLogs();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al crear meal log');
+      const errorMessage = err.response?.data?.message || 'Error al crear meal log';
+      await showError('Error en el cálculo', errorMessage);
+      setError(errorMessage);
     }
   };
 
@@ -475,12 +488,23 @@ export default function MealLogsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este registro?')) {
+    const mealLog = mealLogs.find(log => log.id === id);
+    if (!mealLog) return;
+
+    const result = await showConfirmDelete(
+      `${mealLog.patient.nombre} - ${mealLog.dish.name}`, 
+      'registro de comida'
+    );
+    
+    if (result.isConfirmed) {
       try {
         await api.delete(`/meal-logs/${id}`);
+        await showToast('success', 'Registro eliminado exitosamente');
         fetchMealLogs();
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Error al eliminar meal log');
+        const errorMessage = err.response?.data?.message || 'Error al eliminar meal log';
+        await showError('Error al eliminar', errorMessage);
+        setError(errorMessage);
       }
     }
   };

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
 import { PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useSweetAlert } from '../../../hooks/useSweetAlert';
 
 interface Ingredient {
   id: string;
@@ -182,6 +183,7 @@ export default function IngredientsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const { showSuccess, showError, showConfirmDelete, showToast } = useSweetAlert();
 
   useEffect(() => {
     fetchIngredients();
@@ -213,23 +215,35 @@ export default function IngredientsPage() {
     try {
       if (selectedIngredient) {
         await api.patch(`/ingredients/${selectedIngredient.id}`, data);
+        await showSuccess('¡Actualizado!', `El ingrediente "${data.name}" ha sido actualizado exitosamente.`);
       } else {
         await api.post('/ingredients', data);
+        await showSuccess('¡Creado!', `El ingrediente "${data.name}" ha sido creado exitosamente.`);
       }
       setIsModalOpen(false);
       fetchIngredients();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar ingrediente');
+      const errorMessage = err.response?.data?.message || 'Error al guardar ingrediente';
+      await showError('Error', errorMessage);
+      setError(errorMessage);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este ingrediente?')) {
+    const ingredient = ingredients.find(i => i.id === id);
+    if (!ingredient) return;
+
+    const result = await showConfirmDelete(ingredient.name, 'ingrediente');
+    
+    if (result.isConfirmed) {
       try {
         await api.delete(`/ingredients/${id}`);
+        await showToast('success', 'Ingrediente eliminado exitosamente');
         fetchIngredients();
       } catch (err: any) {
-        setError(err.response?.data?.message || 'Error al eliminar ingrediente');
+        const errorMessage = err.response?.data?.message || 'Error al eliminar ingrediente';
+        await showError('Error al eliminar', errorMessage);
+        setError(errorMessage);
       }
     }
   };

@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../auth/entities/user.entity';
 import { Nino } from '../ninos/entities/nino.entity';
-import { RegistroComida, NutrientesJson } from '../registros/entities/registro-comida.entity';
+import { RegistroComida } from '../registros/entities/registro-comida.entity';
 import { RegistroDeteccionTemprana } from '../registros/entities/registro-deteccion-temprana.entity';
 
 @Injectable()
@@ -27,184 +27,118 @@ export class DashboardService {
       this.deteccionTempranaRepository.count(),
     ]);
 
-    // Get recent activity (last 5 meal records)
+    // Actividad reciente (últimos 10 registros de comida)
     const recentActivity = await this.comidaRepository.find({
       relations: ['nino'],
       order: { fecha: 'DESC' },
-      take: 5,
+      take: 10,
     });
 
-    // Get alerts from early detection
-    const earlyDetectionAlerts = await this.deteccionTempranaRepository
-      .createQueryBuilder('deteccion')
-      .leftJoinAndSelect('deteccion.nino', 'nino')
-      .where('deteccion.nivel_alerta IN (:...levels)', { levels: ['media', 'alta'] })
-      .orderBy('deteccion.fecha', 'DESC')
-      .take(10)
-      .getMany();
-
-    const formattedActivity = recentActivity.map(record => ({
-      description: `Registro de comida para ${record.nino.nombre}`,
-      date: record.fecha,
-      type: 'meal',
-    }));
-
-    const formattedAlerts = earlyDetectionAlerts.map(alert => ({
-      message: `Detección IA: ${alert.nino.nombre} - ${alert.resultado_ia} (${alert.confianza_ia}% confianza)`,
-      severity: alert.nivel_alerta,
-      date: alert.fecha,
-      type: 'early_detection',
-    }));
+    // Alertas (detecciones con nivel alto)
+    const alerts = await this.deteccionTempranaRepository.find({
+      where: { nivel_alerta: 'alta' },
+      relations: ['nino'],
+      order: { fecha: 'DESC' },
+      take: 10,
+    });
 
     return {
       totalUsers,
       totalChildren,
       totalMealRecords,
       totalEarlyDetections,
-      recentActivity: formattedActivity,
-      alerts: formattedAlerts,
+      recentActivity: recentActivity.map(record => ({
+        description: `Registro de comida para ${record.nino.nombre}`,
+        date: record.fecha,
+        hierro: record.hierro_mg,
+      })),
+      alerts: alerts.map(alert => ({
+        message: `${alert.nino.nombre}: ${alert.observaciones}`,
+        date: alert.fecha,
+        level: alert.nivel_alerta,
+      })),
     };
   }
 
-  async getEarlyDetectionProgressData() {
-    // Datos de progreso de detección temprana por mes
-    const progressData = await this.deteccionTempranaRepository
-      .createQueryBuilder('deteccion')
-      .leftJoinAndSelect('deteccion.nino', 'nino')
-      .orderBy('deteccion.fecha', 'ASC')
+  async getEarlyDetectionProgress() {
+    // Obtener datos de los últimos 6 meses agrupados por mes
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const detections = await this.deteccionTempranaRepository
+      .createQueryBuilder('detection')
+      .where('detection.fecha >= :date', { date: sixMonthsAgo })
+      .orderBy('detection.fecha', 'DESC')
       .getMany();
 
-    // Agrupar por mes y calcular estadísticas
+    // Agrupar por mes
     const monthlyData = {};
-    progressData.forEach(record => {
-      const monthKey = record.fecha.toISOString().slice(0, 7); // YYYY-MM
+    detections.forEach(detection => {
+      const monthKey = detection.fecha.toISOString().substring(0, 7); // YYYY-MM
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = {
-          month: monthKey,
-          totalDetections: 0,
-          normalCount: 0,
-          sospechososCount: 0,
-          probableAnemiaCount: 0,
-          averageConfidence: 0,
+          normal: 0,
+          sospechosos: 0,
+          probableAnemia: 0,
           totalConfidence: 0,
+          count: 0,
         };
       }
-      
-      monthlyData[monthKey].totalDetections++;
-      monthlyData[monthKey][`${record.resultado_ia === 'normal' ? 'normal' : record.resultado_ia === 'sospechoso' ? 'sospechosos' : 'probableAnemia'}Count`]++;
-      monthlyData[monthKey].totalConfidence += record.confianza_ia;
+
+      monthlyData[monthKey].count++;
+      monthlyData[monthKey].totalConfidence += detection.confianza_ia;
+
+      switch (detection.resultado_ia) {
+        case 'normal':
+          monthlyData[monthKey].normal++;
+          break;
+        case 'sospechoso':
+          monthlyData[monthKey].sospechosos++;
+          break;
+        case 'probable_anemia':
+          monthlyData[monthKey].probableAnemia++;
+          break;
+      }
     });
 
-    // Calcular promedios finales
-    Object.values(monthlyData).forEach((month: any) => {
-      month.averageConfidence = Math.round((month.totalConfidence / month.totalDetections) * 10) / 10;
-      month.improvementRate = month.totalDetections > 0 ? (month.normalCount / month.totalDetections) * 100 : 0;
-    });
+    // Convertir a array y calcular métricas
+    return Object.keys(monthlyData)
+      .sort()
+      .map(month => {
+        const data = monthlyData[month];
+        const improvementRate = data.count > 0 ? (data.normal / data.count) * 100 : 0;
+        const averageConfidence = data.count > 0 ? data.totalConfidence / data.count : 0;
 
-    return Object.values(monthlyData).sort((a: any, b: any) => a.month.localeCompare(b.month));
+        return {
+          month,
+          improvementRate: Number(improvementRate.toFixed(1)),
+          averageConfidence: Number(averageConfidence.toFixed(1)),
+          normalCount: data.normal,
+          sospechososCount: data.sospechosos,
+          probableAnemiaCount: data.probableAnemia,
+          total: data.count,
+        };
+      });
   }
 
-  async getEarlyDetectionDistributionData() {
-    // Distribución actual de resultados de detección temprana
-    const latestRecords = await this.deteccionTempranaRepository
-      .createQueryBuilder('deteccion')
-      .leftJoinAndSelect('deteccion.nino', 'nino')
-      .where('deteccion.id IN (SELECT MAX(d2.id) FROM registros_deteccion_temprana d2 GROUP BY d2.ninoId)')
-      .getMany();
-
-    const distribution = {
-      normal: 0,
-      sospechoso: 0,
-      probable_anemia: 0,
-    };
-
-    latestRecords.forEach(record => {
-      distribution[record.resultado_ia]++;
-    });
+  async getEarlyDetectionDistribution() {
+    const [normal, sospechosos, probableAnemia] = await Promise.all([
+      this.deteccionTempranaRepository.count({ where: { resultado_ia: 'normal' } }),
+      this.deteccionTempranaRepository.count({ where: { resultado_ia: 'sospechoso' } }),
+      this.deteccionTempranaRepository.count({ where: { resultado_ia: 'probable_anemia' } }),
+    ]);
 
     return {
       labels: ['Normal', 'Sospechoso', 'Probable Anemia'],
-      data: [distribution.normal, distribution.sospechoso, distribution.probable_anemia],
+      data: [normal, sospechosos, probableAnemia],
       colors: ['#10B981', '#F59E0B', '#EF4444'],
     };
   }
 
-  async getNutritionData() {
-    const nutritionData = await this.comidaRepository
-      .createQueryBuilder('comida')
-      .leftJoinAndSelect('comida.nino', 'nino')
-      .orderBy('comida.fecha', 'DESC')
-      .take(50)
-      .getMany();
-
-    return nutritionData.map(record => {
-      const nutrientes = record.json_nutrientes as NutrientesJson;
-      
-      return {
-        id: record.id,
-        url_foto: record.url_foto,
-        fecha: record.fecha,
-        hierro_mg: Number(record.hierro_mg),
-        calorias: Number(record.calorias),
-        json_nutrientes: {
-          proteinas: Number(nutrientes?.proteinas) || 0,
-          carbohidratos: Number(nutrientes?.carbohidratos) || 0,
-          grasas: Number(nutrientes?.grasas) || 0,
-          fibra: Number(nutrientes?.fibra) || 0,
-          vitamina_c: Number(nutrientes?.vitamina_c) || 0,
-          calcio: Number(nutrientes?.calcio) || 0,
-        },
-        nino: {
-          id: record.nino.id,
-          nombre: record.nino.nombre,
-        },
-      };
-    });
-  }
-
-  async getAllUsers() {
-    return this.userRepository.find({
-      select: ['id', 'nombre', 'email', 'rol'],
-    });
-  }
-
-  async getAllChildren() {
+  async getChildren() {
     return this.ninoRepository.find({
       relations: ['madre'],
-      select: {
-        id: true,
-        nombre: true,
-        fecha_nacimiento: true,
-        genero: true,
-        peso_actual: true,
-        altura_actual: true,
-        madre: {
-          id: true,
-          nombre: true,
-          email: true,
-        },
-      },
-    });
-  }
-
-  async getAllDetections() {
-    return this.deteccionTempranaRepository.find({
-      relations: ['nino'],
-      order: { fecha: 'DESC' },
-      select: {
-        id: true,
-        url_foto: true,
-        fecha: true,
-        confianza_ia: true,
-        resultado_ia: true,
-        nivel_alerta: true,
-        parametros_detectados: true,
-        observaciones: true,
-        nino: {
-          id: true,
-          nombre: true,
-        },
-      },
+      order: { nombre: 'ASC' },
     });
   }
 }

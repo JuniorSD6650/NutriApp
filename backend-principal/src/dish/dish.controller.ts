@@ -25,10 +25,24 @@ export class DishController {
     return this.dishService.findAll();
   }
 
+  @Get('active')
+  @ApiOperation({ summary: 'Obtener solo platillos activos' })
+  @ApiResponse({ status: 200, description: 'Lista de platillos activos' })
+  findAllActive() {
+    return this.dishService.findAllActive();
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Obtener platillo por ID' })
   findOne(@Param('id') id: string) {
     return this.dishService.findOne(id);
+  }
+
+  @Get(':id/dependencies')
+  @ApiOperation({ summary: 'Verificar dependencias antes de eliminar' })
+  @ApiResponse({ status: 200, description: 'Información sobre dependencias del platillo' })
+  checkDependencies(@Param('id') id: string) {
+    return this.dishService.checkDependencies(id);
   }
 
   @Patch(':id')
@@ -37,8 +51,31 @@ export class DishController {
     return this.dishService.update(id, updateDishDto);
   }
 
+  @Patch(':id/deactivate')
+  @ApiOperation({ summary: 'Desactivar platillo' })
+  @ApiResponse({ status: 200, description: 'Platillo desactivado exitosamente' })
+  deactivate(@Param('id') id: string) {
+    return this.dishService.deactivate(id);
+  }
+
+  @Patch(':id/activate')
+  @ApiOperation({ summary: 'Activar platillo' })
+  @ApiResponse({ status: 200, description: 'Platillo activado exitosamente' })
+  activate(@Param('id') id: string) {
+    return this.dishService.activate(id);
+  }
+
+  @Patch(':id/toggle-status')
+  @ApiOperation({ summary: 'Alternar estado del platillo' })
+  @ApiResponse({ status: 200, description: 'Estado del platillo cambiado exitosamente' })
+  toggleStatus(@Param('id') id: string) {
+    return this.dishService.toggleStatus(id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Eliminar platillo' })
+  @ApiResponse({ status: 200, description: 'Platillo eliminado exitosamente' })
+  @ApiResponse({ status: 400, description: 'No se puede eliminar debido a dependencias' })
   remove(@Param('id') id: string) {
     return this.dishService.remove(id);
   }

@@ -1,14 +1,19 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { DashboardService } from './dashboard.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
+@ApiTags('dashboard')
+@ApiBearerAuth()
 @Controller('dashboard')
 @UseGuards(JwtAuthGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('stats')
-  async getStats() {
+  @ApiOperation({ summary: 'Obtener estadísticas generales del dashboard' })
+  @ApiResponse({ status: 200, description: 'Estadísticas del sistema' })
+  getStats() {
     return this.dashboardService.getStats();
   }
 
@@ -23,6 +28,8 @@ export class DashboardController {
   }
 
   @Get('children')
+  @ApiOperation({ summary: 'Obtener lista de niños registrados' })
+  @ApiResponse({ status: 200, description: 'Lista de niños' })
   async getChildren() {
     return this.dashboardService.getAllChildren();
   }
@@ -40,11 +47,15 @@ export class DashboardController {
   }
 
   @Get('early-detection-progress')
+  @ApiOperation({ summary: 'Obtener progreso de detección temprana por meses' })
+  @ApiResponse({ status: 200, description: 'Datos de progreso mensual' })
   async getEarlyDetectionProgress() {
     return this.dashboardService.getEarlyDetectionProgressData();
   }
 
   @Get('early-detection-distribution')
+  @ApiOperation({ summary: 'Obtener distribución de resultados de detección temprana' })
+  @ApiResponse({ status: 200, description: 'Distribución de resultados' })
   async getEarlyDetectionDistribution() {
     return this.dashboardService.getEarlyDetectionDistributionData();
   }

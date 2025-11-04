@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
-import { PlusIcon, PencilIcon, TrashIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Doughnut } from 'react-chartjs-2';
+import Swal from 'sweetalert2';
 import {
   Chart as ChartJS,
   ArcElement,
@@ -30,6 +31,7 @@ interface Dish {
   id: string;
   name: string;
   description?: string;
+  is_active: boolean;
   compositions: DishComposition[];
   created_at: string;
 }
@@ -204,24 +206,89 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
       
       // Refrescar la lista principal también
       onRefresh();
+
+      // Notificación de éxito discreta
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.addEventListener('mouseenter', Swal.stopTimer)
+          toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+      });
+
+      Toast.fire({
+        icon: 'success',
+        title: 'Ingrediente agregado exitosamente'
+      });
+
     } catch (error) {
       console.error('Error adding composition:', error);
+      await Swal.fire({
+        title: 'Error',
+        text: 'No se pudo agregar el ingrediente. Inténtelo nuevamente.',
+        icon: 'error',
+        confirmButtonColor: '#EF4444',
+      });
     } finally {
       setIsAddingIngredient(false);
     }
   };
 
-  const removeComposition = async (compositionId: string) => {
+  const removeComposition = async (compositionId: string, ingredientName: string) => {
     try {
-      await api.delete(`/dish-compositions/${compositionId}`);
-      
-      // Refrescar las composiciones desde el backend
-      await refreshCompositions();
-      
-      // Refrescar la lista principal también
-      onRefresh();
+      const result = await Swal.fire({
+        title: '¿Remover ingrediente?',
+        html: `
+          <div class="text-center">
+            <div class="text-4xl mb-3">🗑️</div>
+            <p class="mb-2">¿Está seguro de remover el ingrediente:</p>
+            <p class="font-semibold text-lg">"${ingredientName}"</p>
+            <p class="mt-2 text-sm text-gray-600">del platillo "${dish?.name}"?</p>
+          </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, remover',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+      });
+
+      if (result.isConfirmed) {
+        await api.delete(`/dish-compositions/${compositionId}`);
+        
+        // Refrescar las composiciones desde el backend
+        await refreshCompositions();
+        
+        // Refrescar la lista principal también
+        onRefresh();
+
+        // Notificación de éxito discreta
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 2000,
+          timerProgressBar: true,
+        });
+
+        Toast.fire({
+          icon: 'success',
+          title: 'Ingrediente removido exitosamente'
+        });
+      }
     } catch (error) {
       console.error('Error removing composition:', error);
+      await Swal.fire({
+        title: 'Error',
+        text: 'No se pudo remover el ingrediente. Inténtelo nuevamente.',
+        icon: 'error',
+        confirmButtonColor: '#EF4444',
+      });
     }
   };
 
@@ -334,7 +401,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
                       </div>
                     </div>
                     <button
-                      onClick={() => removeComposition(comp.id)}
+                      onClick={() => removeComposition(comp.id, comp.ingredient.name)}
                       className="text-red-600 hover:text-red-800 ml-2"
                     >
                       <TrashIcon className="h-4 w-4" />
@@ -465,6 +532,7 @@ export default function DishesPage() {
   const [isCompositionModalOpen, setIsCompositionModalOpen] = useState(false);
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
     fetchDishes();
@@ -499,32 +567,211 @@ export default function DishesPage() {
 
   const handleSave = async (data: DishFormData) => {
     try {
+      let response;
       if (selectedDish) {
-        await api.patch(`/dishes/${selectedDish.id}`, data);
+        response = await api.patch(`/dishes/${selectedDish.id}`, data);
+        await Swal.fire({
+          title: '¡Actualizado!',
+          text: `El platillo "${data.name}" ha sido actualizado exitosamente.`,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
       } else {
-        await api.post('/dishes', data);
+        response = await api.post('/dishes', data);
+        await Swal.fire({
+          title: '¡Creado!',
+          text: `El platillo "${data.name}" ha sido creado exitosamente.`,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
       }
       setIsModalOpen(false);
       fetchDishes();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error al guardar platillo');
+      const errorMessage = err.response?.data?.message || 'Error al guardar platillo';
+      await Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#EF4444',
+      });
+      setError(errorMessage);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (window.confirm('¿Estás seguro de eliminar este platillo?')) {
-      try {
-        await api.delete(`/dishes/${id}`);
+  const handleToggleStatus = async (id: string, dishName: string, currentStatus: boolean) => {
+    try {
+      const action = currentStatus ? 'desactivar' : 'activar';
+      const actionPast = currentStatus ? 'desactivado' : 'activado';
+      
+      const result = await Swal.fire({
+        title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} platillo?`,
+        html: `
+          <div class="text-center">
+            <div class="text-6xl mb-4">${currentStatus ? '⏸️' : '▶️'}</div>
+            <p class="mb-2">¿Está seguro de que desea ${action} el platillo:</p>
+            <p class="font-semibold text-lg text-gray-800">"${dishName}"</p>
+            <p class="mt-3 text-sm text-gray-600">
+              ${currentStatus 
+                ? 'El platillo no estará disponible para nuevos registros, pero los existentes se mantendrán.'
+                : 'El platillo volverá a estar disponible para nuevos registros.'
+              }
+            </p>
+          </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: `Sí, ${action}`,
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: currentStatus ? '#F59E0B' : '#10B981',
+        cancelButtonColor: '#6B7280',
+      });
+
+      if (result.isConfirmed) {
+        const response = await api.patch(`/dishes/${id}/toggle-status`);
+        
+        await Swal.fire({
+          title: `¡${actionPast.charAt(0).toUpperCase() + actionPast.slice(1)}!`,
+          text: response.data.message,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+        
         fetchDishes();
-      } catch (err: any) {
-        setError(err.response?.data?.message || 'Error al eliminar platillo');
       }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || `Error al cambiar estado del platillo`;
+      await Swal.fire({
+        title: 'Error',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#EF4444',
+      });
     }
   };
 
-  const filteredDishes = dishes.filter(dish =>
-    dish.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleDelete = async (id: string, dishName: string) => {
+    try {
+      // Primero verificar dependencias
+      const dependenciesResponse = await api.get(`/dishes/${id}/dependencies`);
+      const { canDelete, canDeactivate, mealLogsCount, message, currentStatus } = dependenciesResponse.data;
+
+      if (!canDelete) {
+        const result = await Swal.fire({
+          title: '⚠️ No se puede eliminar',
+          html: `
+            <div class="text-left">
+              <p class="mb-3"><strong>El platillo "${dishName}" no puede ser eliminado porque:</strong></p>
+              <p class="mb-2">• Tiene <strong>${mealLogsCount}</strong> registro(s) de comida asociados</p>
+              <p class="mb-4">• ${message}</p>
+              <p class="text-sm text-gray-600 mb-4">
+                <strong>Alternativa:</strong> Puede desactivar el platillo en lugar de eliminarlo. 
+                Esto mantendrá los registros existentes pero evitará que se creen nuevos.
+              </p>
+            </div>
+          `,
+          icon: 'warning',
+          showDenyButton: true,
+          showCancelButton: true,
+          confirmButtonText: currentStatus ? '⏸️ Desactivar' : '▶️ Activar',
+          denyButtonText: '📋 Ver Registros',
+          cancelButtonText: 'Cancelar',
+          confirmButtonColor: currentStatus ? '#F59E0B' : '#10B981',
+          denyButtonColor: '#3B82F6',
+          cancelButtonColor: '#6B7280',
+        });
+
+        if (result.isConfirmed) {
+          // Desactivar/Activar el platillo
+          await handleToggleStatus(id, dishName, currentStatus);
+        } else if (result.isDenied) {
+          // Redirigir a meal logs (funcionalidad futura)
+          await Swal.fire({
+            title: 'Funcionalidad próximamente',
+            text: 'La redirección a registros de comida estará disponible pronto.',
+            icon: 'info',
+            confirmButtonColor: '#3B82F6',
+          });
+        }
+        return;
+      }
+
+      // Si se puede eliminar, mostrar confirmación normal
+      const result = await Swal.fire({
+        title: '¿Eliminar platillo?',
+        html: `
+          <div class="text-center">
+            <div class="text-6xl mb-4">🗑️</div>
+            <p class="mb-2">¿Está seguro de que desea eliminar el platillo:</p>
+            <p class="font-semibold text-lg text-gray-800">"${dishName}"</p>
+            <p class="mt-3 text-sm text-gray-600">Esta acción no se puede deshacer.</p>
+          </div>
+        `,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        focusCancel: true,
+      });
+
+      if (result.isConfirmed) {
+        // Mostrar loading
+        Swal.fire({
+          title: 'Eliminando...',
+          text: 'Por favor espere',
+          icon: 'info',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          willOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        await api.delete(`/dishes/${id}`);
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: `El platillo "${dishName}" ha sido eliminado exitosamente.`,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+        
+        fetchDishes();
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Error al eliminar platillo';
+      await Swal.fire({
+        title: 'Error al eliminar',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#EF4444',
+      });
+      setError(errorMessage);
+    }
+  };
+
+  const filteredDishes = dishes.filter(dish => {
+    const matchesSearch = dish.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = showInactive ? true : dish.is_active;
+    return matchesSearch && matchesStatus;
+  });
 
   if (isLoading) {
     return <div className="text-center">Cargando platillos...</div>;
@@ -549,34 +796,51 @@ export default function DishesPage() {
         </div>
       )}
 
-      {/* Barra de búsqueda */}
-      <div className="mb-6">
+      {/* Filtros */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
         <input
           type="text"
           placeholder="Buscar platillos..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full max-w-md border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
+        <div className="flex items-center">
+          <label className="flex items-center cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+            />
+            <span className="ml-2 text-sm text-gray-700">Mostrar platillos inactivos</span>
+          </label>
+        </div>
       </div>
 
       {/* Estadísticas rápidas */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-blue-600">{dishes.length}</div>
           <div className="text-sm text-gray-600">Total Platillos</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-green-600">
-            {dishes.filter(d => d.compositions?.length > 0).length}
+            {dishes.filter(d => d.is_active).length}
           </div>
-          <div className="text-sm text-gray-600">Con Receta</div>
+          <div className="text-sm text-gray-600">Activos</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-2xl font-bold text-red-600">
+            {dishes.filter(d => !d.is_active).length}
+          </div>
+          <div className="text-sm text-gray-600">Inactivos</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-yellow-600">
-            {Math.round(dishes.reduce((sum, d) => sum + (d.compositions?.length || 0), 0) / dishes.length) || 0}
+            {dishes.filter(d => d.compositions?.length > 0).length}
           </div>
-          <div className="text-sm text-gray-600">Ingredientes Promedio</div>
+          <div className="text-sm text-gray-600">Con Receta</div>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="text-2xl font-bold text-purple-600">
@@ -596,11 +860,28 @@ export default function DishesPage() {
             ) || 0;
             
             return (
-              <li key={dish.id} className="px-6 py-4 hover:bg-gray-50">
+              <li key={dish.id} className={`px-6 py-4 hover:bg-gray-50 ${!dish.is_active ? 'bg-gray-50 opacity-75' : ''}`}>
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <div className="flex items-center justify-between">
-                      <h3 className="text-lg font-medium text-gray-900">{dish.name}</h3>
+                      <div className="flex items-center">
+                        <h3 className={`text-lg font-medium ${dish.is_active ? 'text-gray-900' : 'text-gray-500'}`}>
+                          {dish.name}
+                        </h3>
+                        <div className="ml-3 flex items-center">
+                          {dish.is_active ? (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              <CheckCircleIcon className="h-3 w-3 mr-1" />
+                              Activo
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <XCircleIcon className="h-3 w-3 mr-1" />
+                              Inactivo
+                            </span>
+                          )}
+                        </div>
+                      </div>
                       <div className="flex items-center space-x-2">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                           {totalIngredients} ingredientes
@@ -613,7 +894,9 @@ export default function DishesPage() {
                       </div>
                     </div>
                     {dish.description && (
-                      <p className="mt-1 text-sm text-gray-600">{dish.description}</p>
+                      <p className={`mt-1 text-sm ${dish.is_active ? 'text-gray-600' : 'text-gray-400'}`}>
+                        {dish.description}
+                      </p>
                     )}
                     <div className="mt-2 text-xs text-gray-500">
                       Creado: {new Date(dish.created_at).toLocaleDateString()}
@@ -635,7 +918,18 @@ export default function DishesPage() {
                       <PencilIcon className="h-5 w-5" />
                     </button>
                     <button
-                      onClick={() => handleDelete(dish.id)}
+                      onClick={() => handleToggleStatus(dish.id, dish.name, dish.is_active)}
+                      className={`${dish.is_active ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
+                      title={dish.is_active ? 'Desactivar' : 'Activar'}
+                    >
+                      {dish.is_active ? (
+                        <XCircleIcon className="h-5 w-5" />
+                      ) : (
+                        <CheckCircleIcon className="h-5 w-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={() => handleDelete(dish.id, dish.name)}
                       className="text-red-600 hover:text-red-900"
                       title="Eliminar"
                     >
@@ -650,7 +944,10 @@ export default function DishesPage() {
 
         {filteredDishes.length === 0 && (
           <div className="text-center py-8 text-gray-500">
-            No se encontraron platillos
+            {showInactive 
+              ? 'No se encontraron platillos'
+              : 'No se encontraron platillos activos'
+            }
           </div>
         )}
       </div>

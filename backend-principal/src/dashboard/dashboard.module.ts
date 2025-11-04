@@ -9,9 +9,15 @@ import { RegistroDeteccionTemprana } from '../registros/entities/registro-detecc
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Nino, RegistroComida, RegistroDeteccionTemprana]),
+    TypeOrmModule.forFeature([
+      User,
+      Nino,
+      RegistroComida,
+      RegistroDeteccionTemprana,
+    ]),
   ],
   controllers: [DashboardController],
   providers: [DashboardService],
+  exports: [DashboardService],
 })
 export class DashboardModule {}

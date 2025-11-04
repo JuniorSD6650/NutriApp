@@ -12,6 +12,9 @@ export class Dish {
   @Column({ type: 'text', nullable: true })
   description: string;
 
+  @Column({ type: 'boolean', default: true })
+  is_active: boolean;
+
   @OneToMany(() => DishComposition, composition => composition.dish)
   compositions: DishComposition[];
 
