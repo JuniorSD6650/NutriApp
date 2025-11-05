@@ -1,7 +1,8 @@
-import { Controller, Post, Body, ValidationPipe, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, ValidationPipe, HttpCode, HttpStatus, Delete, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterAuthDto, LoginAuthDto } from './dto/register-auth.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -53,5 +54,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   async login(@Body(ValidationPipe) loginDto: LoginAuthDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Delete('users/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Eliminar usuario (solo admin)' })
+  @ApiResponse({ status: 200, description: 'Usuario eliminado exitosamente' })
+  @ApiResponse({ status: 403, description: 'No autorizado' })
+  @ApiResponse({ status: 404, description: 'Usuario no encontrado' })
+  async deleteUser(@Param('id') id: string) {
+    return this.authService.deleteUser(id);
   }
 }

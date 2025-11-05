@@ -1,10 +1,11 @@
-import { Injectable, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ConflictException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from './entities/user.entity';
 import { RegisterAuthDto, LoginAuthDto } from './dto/register-auth.dto';
+import { Nino } from '../ninos/entities/nino.entity';
 
 @Injectable()
 export class AuthService {
@@ -78,6 +79,49 @@ export class AuthService {
         rol: user.rol,
       },
       token,
+    };
+  }
+
+  async deleteUser(id: string) {
+    const user = await this.userRepository.findOne({ 
+      where: { id },
+      relations: ['ninos'] // Agregar relación
+    });
+    
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Cargar registros asociados de cada niño
+    let totalDetections = 0;
+    let totalMealLogs = 0;
+    if (user.ninos && user.ninos.length > 0) {
+      // Cargar relaciones para cada niño
+      for (const nino of user.ninos) {
+        const ninoFull = await this.userRepository.manager.findOne(Nino, {
+          where: { id: nino.id },
+          relations: ['registros_deteccion_temprana', 'meal_logs']
+        });
+        totalDetections += ninoFull?.registros_deteccion_temprana?.length || 0;
+        totalMealLogs += ninoFull?.meal_logs?.length || 0;
+      }
+      // Solo impedir si hay registros asociados
+      if (totalDetections > 0 || totalMealLogs > 0) {
+        throw new ConflictException(
+          `No se puede eliminar usuario con datos asociados. Registros: ${totalDetections} detecciones, ${totalMealLogs} registros nutricionales`
+        );
+      }
+    }
+
+    await this.userRepository.remove(user);
+    
+    return {
+      message: `Usuario "${user.nombre}" eliminado exitosamente`,
+      deletedUser: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+      }
     };
   }
 }

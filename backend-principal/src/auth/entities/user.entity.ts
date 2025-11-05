@@ -1,4 +1,5 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Nino } from '../../ninos/entities/nino.entity';
 
 @Entity({ name: 'usuarios' })
 export class User {
@@ -14,8 +15,15 @@ export class User {
   @Column()
   password_hash: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'madre' })
+  @Column({
+    type: 'enum',
+    enum: ['madre', 'admin'],
+    default: 'madre'
+  })
   rol: string; // 'madre' o 'admin'
+
+  @OneToMany(() => Nino, (nino) => nino.madre)
+  ninos: Nino[];
 
   @CreateDateColumn()
   created_at: Date;

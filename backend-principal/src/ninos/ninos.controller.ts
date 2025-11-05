@@ -47,7 +47,10 @@ export class NinosController {
   @ApiOperation({ summary: 'Eliminar un niño' })
   @ApiParam({ name: 'id', description: 'ID del niño' })
   @ApiResponse({ status: 200, description: 'Niño eliminado exitosamente' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos o el niño tiene registros asociados' })
+  @ApiResponse({ status: 404, description: 'Niño no encontrado' })
   remove(@Param('id') id: string, @Request() req) {
-    return this.ninosService.remove(id, req.user.id);
+    // Los admins pueden eliminar cualquier niño, las madres solo los suyos
+    return this.ninosService.remove(id, req.user.id, req.user.rol);
   }
 }

@@ -2,13 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
-import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import Swal from 'sweetalert2';
 
 interface User {
   id: string;
   nombre: string;
   email: string;
   rol: string;
+  created_at?: string;
 }
 
 interface Child {
@@ -37,6 +39,189 @@ interface PaginatedChildren {
   totalPages: number;
 }
 
+// Modal para ver detalles del usuario
+interface UserModalProps {
+  user: User | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const UserModal = ({ user, isOpen, onClose }: UserModalProps) => {
+  if (!isOpen || !user) return null;
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-6 border w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            👤 Información del Usuario
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl font-bold text-blue-700">
+                {user.nombre.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre:</label>
+            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{user.nombre}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email:</label>
+            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{user.email}</p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Rol:</label>
+            <span className={`inline-flex px-3 py-1 text-sm font-semibold rounded-full ${
+              user.rol === 'admin' 
+                ? 'bg-purple-100 text-purple-800' 
+                : 'bg-green-100 text-green-800'
+            }`}>
+              {user.rol === 'admin' ? 'Administrador' : 'Madre'}
+            </span>
+          </div>
+
+          {user.created_at && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de registro:</label>
+              <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                {new Date(user.created_at).toLocaleDateString('es-ES', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Modal para ver detalles del niño
+interface ChildModalProps {
+  child: Child | null;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const ChildModal = ({ child, isOpen, onClose }: ChildModalProps) => {
+  if (!isOpen || !child) return null;
+
+  const age = Math.floor((Date.now() - new Date(child.fecha_nacimiento).getTime()) / (365.25 * 24 * 60 * 60 * 1000));
+  const ageInMonths = Math.floor((Date.now() - new Date(child.fecha_nacimiento).getTime()) / (30.44 * 24 * 60 * 60 * 1000));
+
+  return (
+    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+      <div className="relative top-20 mx-auto p-6 border w-full max-w-md shadow-lg rounded-lg bg-white">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            👶 Información del Niño
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <XMarkIcon className="h-6 w-6" />
+          </button>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="flex items-center justify-center mb-4">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+              <span className="text-2xl font-bold text-green-700">
+                {child.nombre.charAt(0).toUpperCase()}
+              </span>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre:</label>
+            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{child.nombre}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Edad:</label>
+              <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+                {age} años ({ageInMonths} meses)
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Género:</label>
+              <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded capitalize">{child.genero}</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Peso:</label>
+              <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{child.peso_actual} kg</p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Altura:</label>
+              <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">{child.altura_actual} cm</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento:</label>
+            <p className="text-sm text-gray-900 bg-gray-50 p-2 rounded">
+              {new Date(child.fecha_nacimiento).toLocaleDateString('es-ES', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Madre:</label>
+            <div className="bg-gray-50 p-2 rounded">
+              <p className="text-sm font-medium text-gray-900">{child.madre.nombre}</p>
+              <p className="text-xs text-gray-500">{child.madre.email}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export default function ProductsPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
@@ -56,6 +241,10 @@ export default function ProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [isChildModalOpen, setIsChildModalOpen] = useState(false);
 
   // Cargar datos iniciales para ambos tabs
   useEffect(() => {
@@ -183,8 +372,232 @@ export default function ProductsPage() {
     fetchData(1, value);
   };
 
+  const handleViewUser = (user: User) => {
+    setSelectedUser(user);
+    setIsUserModalOpen(true);
+  };
+
+  const handleViewChild = (child: Child) => {
+    setSelectedChild(child);
+    setIsChildModalOpen(true);
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    try {
+      const result = await Swal.fire({
+        title: '¿Eliminar usuario?',
+        html: `
+          <div class="text-center">
+            <div class="text-6xl mb-4">👤</div>
+            <p class="mb-2">¿Está seguro de que desea eliminar el usuario:</p>
+            <p class="font-semibold text-lg text-gray-800">"${user.nombre}"</p>
+            <p class="text-sm text-gray-600 mt-2">Email: ${user.email}</p>
+            <p class="text-sm text-red-600 mt-3">
+              <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer.
+              ${user.rol === 'madre' ? 'También se eliminarán todos los niños y registros asociados.' : ''}
+            </p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        focusCancel: true,
+      });
+
+      if (result.isConfirmed) {
+        // Mostrar loading
+        Swal.fire({
+          title: 'Eliminando usuario...',
+          text: 'Por favor espere',
+          icon: 'info',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          willOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        // Realizar la eliminación
+        await api.delete(`/auth/users/${user.id}`);
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: `El usuario "${user.nombre}" ha sido eliminado exitosamente.`,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+        
+        // Recargar los datos
+        if (activeTab === 'users') {
+          await fetchUsersData(usersPagination.page, searchTerm);
+        }
+      }
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.message || 'Error al eliminar usuario';
+      await Swal.fire({
+        title: 'Error al eliminar',
+        text: errorMessage,
+        icon: 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: '#EF4444',
+      });
+    }
+  };
+
+  const handleDeleteChild = async (child: Child) => {
+    try {
+      const result = await Swal.fire({
+        title: '¿Eliminar niño?',
+        html: `
+          <div class="text-center">
+            <div class="text-6xl mb-4">👶</div>
+            <p class="mb-2">¿Está seguro de que desea eliminar el registro del niño:</p>
+            <p class="font-semibold text-lg text-gray-800">"${child.nombre}"</p>
+            <p class="text-sm text-gray-600 mt-2">Madre: ${child.madre.nombre}</p>
+            <p class="text-sm text-red-600 mt-3">
+              <strong>⚠️ Advertencia:</strong> Esta acción no se puede deshacer.
+              Se eliminarán todos los registros nutricionales y detecciones asociadas.
+            </p>
+          </div>
+        `,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: '#EF4444',
+        cancelButtonColor: '#6B7280',
+        focusCancel: true,
+      });
+
+      if (result.isConfirmed) {
+        // Mostrar loading
+        Swal.fire({
+          title: 'Eliminando niño...',
+          text: 'Por favor espere',
+          icon: 'info',
+          allowOutsideClick: false,
+          showConfirmButton: false,
+          willOpen: () => {
+            Swal.showLoading();
+          },
+        });
+
+        // Realizar la eliminación
+        await api.delete(`/ninos/${child.id}`);
+        
+        await Swal.fire({
+          title: '¡Eliminado!',
+          text: `El registro de "${child.nombre}" ha sido eliminado exitosamente.`,
+          icon: 'success',
+          confirmButtonText: 'Continuar',
+          confirmButtonColor: '#10B981',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+        
+        // Recargar los datos
+        if (activeTab === 'children') {
+          await fetchChildrenData(childrenPagination.page, searchTerm);
+        }
+      }
+    } catch (err: any) {
+      // Manejar diferentes tipos de errores de forma más específica
+      let errorTitle = 'Error al eliminar';
+      let errorMessage = 'Error desconocido al eliminar niño';
+      let errorDetails = '';
+      let showDependencies = false;
+      
+      if (err.response?.status === 403) {
+        const errorData = err.response.data;
+        
+        // Si es un error estructurado con dependencias
+        if (errorData.dependencias) {
+          errorTitle = 'No se puede eliminar';
+          errorMessage = errorData.message;
+          errorDetails = errorData.details;
+          showDependencies = true;
+          
+          await Swal.fire({
+            title: errorTitle,
+            html: `
+              <div class="text-left">
+                <div class="mb-4">
+                  <p class="mb-2 text-gray-800">${errorMessage}</p>
+                  <p class="text-sm text-gray-600">${errorDetails}</p>
+                </div>
+                
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+                  <h4 class="font-semibold text-yellow-800 mb-2">📊 Registros encontrados:</h4>
+                  <ul class="text-sm text-yellow-700 space-y-1">
+                    ${errorData.dependencias.detecciones > 0 ? `<li>• ${errorData.dependencias.detecciones} detecciones de IA</li>` : ''}
+                    ${errorData.dependencias.registrosNutricionales > 0 ? `<li>• ${errorData.dependencias.registrosNutricionales} registros nutricionales</li>` : ''}
+                    <li class="font-medium pt-1">Total: ${errorData.dependencias.total} registros</li>
+                  </ul>
+                </div>
+                
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 class="font-semibold text-blue-800 mb-2">💡 Opciones disponibles:</h4>
+                  <ul class="text-sm text-blue-700 space-y-2">
+                    <li>• <strong>Eliminar registros primero:</strong> Vaya a las secciones correspondientes y elimine los registros asociados</li>
+                    <li>• <strong>Contactar soporte:</strong> Si necesita eliminar todos los datos por motivos administrativos</li>
+                    <li>• <strong>Archivar en lugar de eliminar:</strong> Considere mantener los datos para análisis históricos</li>
+                  </ul>
+                </div>
+                
+                <div class="mt-4 text-xs text-gray-500">
+                  <p><strong>Sugerencia:</strong> ${errorData.suggestion}</p>
+                </div>
+              </div>
+            `,
+            icon: 'warning',
+            confirmButtonText: 'Entendido',
+            confirmButtonColor: '#F59E0B',
+            width: '600px',
+          });
+          return;
+        } else {
+          // Error de permisos simple
+          errorTitle = 'Sin permisos';
+          errorMessage = errorData.message || 'No tienes permisos para eliminar este niño';
+        }
+      } else if (err.response?.status === 404) {
+        errorTitle = 'Niño no encontrado';
+        errorMessage = 'El niño que intentas eliminar no existe en el sistema';
+      } else if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      }
+      
+      // Mostrar error simple para otros casos
+      await Swal.fire({
+        title: errorTitle,
+        html: `
+          <div class="text-left">
+            <p class="mb-3">${errorMessage}</p>
+            ${err.response?.status === 403 && !showDependencies ? `
+              <div class="bg-blue-50 border border-blue-200 rounded p-3 mt-3">
+                <p class="text-sm text-blue-800">
+                  <strong>💡 Sugerencia:</strong> Si necesitas eliminar este registro por motivos administrativos, 
+                  contacta con el equipo de soporte del sistema.
+                </p>
+              </div>
+            ` : ''}
+          </div>
+        `,
+        icon: err.response?.status === 403 ? 'warning' : 'error',
+        confirmButtonText: 'Entendido',
+        confirmButtonColor: err.response?.status === 403 ? '#F59E0B' : '#EF4444',
+        width: '500px',
+      });
+    }
+  };
+
   const currentPagination = activeTab === 'users' ? usersPagination : childrenPagination;
-  const currentData = activeTab === 'users' ? users : children;
 
   if (isLoading && users.length === 0 && children.length === 0) {
     return (
@@ -299,14 +712,22 @@ export default function ProductsPage() {
                           ? 'bg-purple-100 text-purple-800' 
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {user.rol}
+                        {user.rol === 'admin' ? 'Administrador' : 'Madre'}
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <button className="text-indigo-600 hover:text-indigo-900 mr-4">
+                      <button 
+                        onClick={() => handleViewUser(user)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                        title="Ver detalles"
+                      >
                         Ver
                       </button>
-                      <button className="text-red-600 hover:text-red-900">
+                      <button 
+                        onClick={() => handleDeleteUser(user)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Eliminar usuario"
+                      >
                         Eliminar
                       </button>
                     </td>
@@ -374,10 +795,18 @@ export default function ProductsPage() {
                         {child.madre.nombre}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-indigo-600 hover:text-indigo-900 mr-4">
+                        <button 
+                          onClick={() => handleViewChild(child)}
+                          className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          title="Ver detalles"
+                        >
                           Ver
                         </button>
-                        <button className="text-red-600 hover:text-red-900">
+                        <button 
+                          onClick={() => handleDeleteChild(child)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Eliminar niño"
+                        >
                           Eliminar
                         </button>
                       </td>
@@ -389,7 +818,7 @@ export default function ProductsPage() {
           ) : (
             <div className="text-center py-12 text-gray-500">
               <div className="text-4xl mb-4">👶</div>
-              <p className="text-lg mb-2">No hay niños registrados</p>
+              <p className="text-lg mb-2">No hay niños disponibles</p>
               <p className="text-sm">
                 {searchTerm ? 'Intenta con otro término de búsqueda' : 'Los niños aparecerán aquí cuando se registren'}
               </p>
@@ -398,73 +827,82 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Paginación */}
-      {currentPagination.totalPages > 1 && (
-        <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6 rounded-lg shadow">
-          <div className="flex-1 flex justify-between sm:hidden">
-            <button
-              onClick={() => handlePageChange(currentPagination.page - 1)}
-              disabled={currentPagination.page === 1}
-              className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Anterior
-            </button>
-            <button
-              onClick={() => handlePageChange(currentPagination.page + 1)}
-              disabled={currentPagination.page === currentPagination.totalPages}
-              className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Siguiente
-            </button>
+      {/* Paginación debajo de ambas tablas */}
+      {(activeTab === 'users' && users.length > 0) || (activeTab === 'children' && children.length > 0) ? (
+        <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 rounded-b-lg">
+          <div>
+            <p className="text-sm text-gray-700">
+              Página <span className="font-medium">{currentPagination.page}</span> de <span className="font-medium">{currentPagination.totalPages}</span>
+            </p>
           </div>
-          <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Mostrando{' '}
-                <span className="font-medium">
-                  {(currentPagination.page - 1) * currentPagination.limit + 1}
-                </span>{' '}
-                a{' '}
-                <span className="font-medium">
-                  {Math.min(currentPagination.page * currentPagination.limit, currentPagination.total)}
-                </span>{' '}
-                de{' '}
-                <span className="font-medium">{currentPagination.total}</span> registros
-              </p>
-            </div>
-            <div>
-              <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                {Array.from({ length: Math.min(5, currentPagination.totalPages) }, (_, i) => {
-                  let pageNumber;
-                  if (currentPagination.totalPages <= 5) {
-                    pageNumber = i + 1;
-                  } else if (currentPagination.page <= 3) {
-                    pageNumber = i + 1;
-                  } else if (currentPagination.page >= currentPagination.totalPages - 2) {
-                    pageNumber = currentPagination.totalPages - 4 + i;
-                  } else {
-                    pageNumber = currentPagination.page - 2 + i;
-                  }
-                  
-                  return (
-                    <button
-                      key={pageNumber}
-                      onClick={() => handlePageChange(pageNumber)}
-                      className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                        pageNumber === currentPagination.page
-                          ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
-                          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                      }`}
-                    >
-                      {pageNumber}
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
+          <div>
+            <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+              <button
+                onClick={() => handlePageChange(currentPagination.page - 1)}
+                disabled={currentPagination.page === 1}
+                className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${
+                  currentPagination.page === 1 ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <ChevronLeftIcon className="h-5 w-5" />
+              </button>
+              {Array.from({ length: Math.min(5, currentPagination.totalPages) }, (_, i) => {
+                let pageNumber;
+                if (currentPagination.totalPages <= 5) {
+                  pageNumber = i + 1;
+                } else if (currentPagination.page <= 3) {
+                  pageNumber = i + 1;
+                } else if (currentPagination.page >= currentPagination.totalPages - 2) {
+                  pageNumber = currentPagination.totalPages - 4 + i;
+                } else {
+                  pageNumber = currentPagination.page - 2 + i;
+                }
+                return (
+                  <button
+                    key={pageNumber}
+                    onClick={() => handlePageChange(pageNumber)}
+                    className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
+                      pageNumber === currentPagination.page
+                        ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                        : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => handlePageChange(currentPagination.page + 1)}
+                disabled={currentPagination.page === currentPagination.totalPages}
+                className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 ${
+                  currentPagination.page === currentPagination.totalPages ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                <ChevronRightIcon className="h-5 w-5" />
+              </button>
+            </nav>
           </div>
         </div>
-      )}
+      ) : null}
+
+      {/* Modales */}
+      <UserModal 
+        user={selectedUser}
+        isOpen={isUserModalOpen}
+        onClose={() => {
+          setIsUserModalOpen(false);
+          setSelectedUser(null);
+        }}
+      />
+
+      <ChildModal 
+        child={selectedChild}
+        isOpen={isChildModalOpen}
+        onClose={() => {
+          setIsChildModalOpen(false);
+          setSelectedChild(null);
+        }}
+      />
     </div>
   );
 }
