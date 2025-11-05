@@ -61,6 +61,11 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Verificar si el usuario está activo
+    if (!user.activo) {
+      throw new UnauthorizedException('Usuario desactivado. Contacte al administrador.');
+    }
+
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
     if (!isPasswordValid) {
@@ -123,5 +128,61 @@ export class AuthService {
         email: user.email,
       }
     };
+  }
+
+  async deactivateUser(id: string) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (!user.activo) {
+      return { message: `El usuario "${user.nombre}" ya está desactivado.` };
+    }
+    user.activo = false;
+    await this.userRepository.save(user);
+    return {
+      message: `Usuario "${user.nombre}" desactivado exitosamente`,
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        activo: user.activo,
+        rol: user.rol,
+      }
+    };
+  }
+
+  async activateUser(id: string) {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+    if (user.activo) {
+      return { message: `El usuario "${user.nombre}" ya está activado.` };
+    }
+    user.activo = true;
+    await this.userRepository.save(user);
+    return {
+      message: `Usuario "${user.nombre}" activado exitosamente`,
+      user: {
+        id: user.id,
+        nombre: user.nombre,
+        email: user.email,
+        activo: user.activo,
+        rol: user.rol,
+      }
+    };
+  }
+
+  async getActiveUsers() {
+    return this.userRepository.find({ where: { activo: true } });
+  }
+
+  async getInactiveUsers() {
+    return this.userRepository.find({ where: { activo: false } });
+  }
+
+  async getAllUsers() {
+    return this.userRepository.find();
   }
 }

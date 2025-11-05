@@ -1,5 +1,75 @@
 import Swal from 'sweetalert2';
+import { useEffect } from 'react';
 
+export interface SweetAlertProps {
+  open: boolean;
+  type?: 'success' | 'error' | 'warning' | 'info' | 'question';
+  title: string;
+  text?: string;
+  html?: string;
+  confirmText?: string;
+  cancelText?: string;
+  showCancel?: boolean;
+  onConfirm?: () => void;
+  onCancel?: () => void;
+  timer?: number;
+  toast?: boolean;
+  position?: 'top-end' | 'center' | 'top' | 'bottom' | 'bottom-end';
+  iconColor?: string;
+  confirmColor?: string;
+  cancelColor?: string;
+  allowOutsideClick?: boolean;
+}
+
+export const SweetAlert = ({
+  open,
+  type = 'info',
+  title,
+  text,
+  html,
+  confirmText = 'OK',
+  cancelText = 'Cancelar',
+  showCancel = false,
+  onConfirm,
+  onCancel,
+  timer,
+  toast = false,
+  position = 'center',
+  iconColor,
+  confirmColor,
+  cancelColor,
+  allowOutsideClick = true,
+}: SweetAlertProps) => {
+  useEffect(() => {
+    if (!open) return;
+    Swal.fire({
+      title,
+      text,
+      html,
+      icon: type,
+      showCancelButton: showCancel,
+      confirmButtonText: confirmText,
+      cancelButtonText: cancelText,
+      timer,
+      toast,
+      position,
+      iconColor,
+      confirmButtonColor: confirmColor,
+      cancelButtonColor: cancelColor,
+      allowOutsideClick,
+      willOpen: () => {
+        if (type === 'info' && !toast) Swal.showLoading();
+      },
+    }).then((result) => {
+      if (result.isConfirmed && onConfirm) onConfirm();
+      if (result.isDismissed && onCancel) onCancel();
+    });
+    // eslint-disable-next-line
+  }, [open]);
+  return null;
+};
+
+// Hook para uso programático (opcional, legacy)
 export const useSweetAlert = () => {
   const showSuccess = (title: string, text?: string, timer: number = 3000) => {
     return Swal.fire({

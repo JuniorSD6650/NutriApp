@@ -25,6 +25,9 @@ export class User {
   @OneToMany(() => Nino, (nino) => nino.madre)
   ninos: Nino[];
 
+  @Column({ default: true })
+  activo: boolean;
+
   @CreateDateColumn()
   created_at: Date;
 

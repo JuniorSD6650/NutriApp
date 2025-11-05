@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '../../../lib/api';
 import { PlusIcon, PencilIcon, TrashIcon, EyeIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { Doughnut } from 'react-chartjs-2';
+import { SweetAlert } from '../../../hooks/useSweetAlert';
 import Swal from 'sweetalert2';
 import {
   Chart as ChartJS,
@@ -211,7 +212,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
       onRefresh();
 
       // Notificación de éxito discreta
-      const Toast = Swal.mixin({
+  const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
         showConfirmButton: false,
@@ -230,7 +231,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
 
     } catch (error) {
       console.error('Error adding composition:', error);
-      await Swal.fire({
+  await Swal.fire({
         title: 'Error',
         text: 'No se pudo agregar el ingrediente. Inténtelo nuevamente.',
         icon: 'error',
@@ -243,7 +244,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
 
   const removeComposition = async (compositionId: string, ingredientName: string) => {
     try {
-      const result = await Swal.fire({
+  const result = await Swal.fire({
         title: '¿Remover ingrediente?',
         html: `
           <div class="text-center">
@@ -271,7 +272,7 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
         onRefresh();
 
         // Notificación de éxito discreta
-        const Toast = Swal.mixin({
+  const Toast = Swal.mixin({
           toast: true,
           position: 'top-end',
           showConfirmButton: false,
@@ -279,14 +280,14 @@ const CompositionModal = ({ isOpen, onClose, dish, onRefresh }: CompositionModal
           timerProgressBar: true,
         });
 
-        Toast.fire({
+  Toast.fire({
           icon: 'success',
           title: 'Ingrediente removido exitosamente'
         });
       }
     } catch (error) {
       console.error('Error removing composition:', error);
-      await Swal.fire({
+  await Swal.fire({
         title: 'Error',
         text: 'No se pudo remover el ingrediente. Inténtelo nuevamente.',
         icon: 'error',
@@ -550,6 +551,7 @@ export default function DishesPage() {
   const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showInactive, setShowInactive] = useState(false);
+  const [alert, setAlert] = useState<any>({ open: false });
 
   useEffect(() => {
     fetchDishes();
@@ -631,37 +633,38 @@ export default function DishesPage() {
       let response;
       if (selectedDish) {
         response = await api.patch(`/dishes/${selectedDish.id}`, data);
-        await Swal.fire({
+        setAlert({
+          open: true,
+          type: 'success',
           title: '¡Actualizado!',
           text: `El platillo "${data.name}" ha sido actualizado exitosamente.`,
-          icon: 'success',
-          confirmButtonText: 'Continuar',
-          confirmButtonColor: '#10B981',
           timer: 3000,
-          timerProgressBar: true,
+          confirmColor: '#10B981',
+          onConfirm: () => setAlert({ open: false }),
         });
       } else {
         response = await api.post('/dishes', data);
-        await Swal.fire({
+        setAlert({
+          open: true,
+          type: 'success',
           title: '¡Creado!',
           text: `El platillo "${data.name}" ha sido creado exitosamente.`,
-          icon: 'success',
-          confirmButtonText: 'Continuar',
-          confirmButtonColor: '#10B981',
           timer: 3000,
-          timerProgressBar: true,
+          confirmColor: '#10B981',
+          onConfirm: () => setAlert({ open: false }),
         });
       }
       setIsModalOpen(false);
       fetchDishes();
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || 'Error al guardar platillo';
-      await Swal.fire({
+      setAlert({
+        open: true,
+        type: 'error',
         title: 'Error',
         text: errorMessage,
-        icon: 'error',
-        confirmButtonText: 'Entendido',
-        confirmButtonColor: '#EF4444',
+        confirmColor: '#EF4444',
+        onConfirm: () => setAlert({ open: false }),
       });
       setError(errorMessage);
     }
@@ -671,8 +674,10 @@ export default function DishesPage() {
     try {
       const action = currentStatus ? 'desactivar' : 'activar';
       const actionPast = currentStatus ? 'desactivado' : 'activado';
-      
-      const result = await Swal.fire({
+
+      setAlert({
+        open: true,
+        type: 'question',
         title: `¿${action.charAt(0).toUpperCase() + action.slice(1)} platillo?`,
         html: `
           <div class="text-center">
@@ -687,37 +692,46 @@ export default function DishesPage() {
             </p>
           </div>
         `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: `Sí, ${action}`,
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: currentStatus ? '#F59E0B' : '#10B981',
-        cancelButtonColor: '#6B7280',
+        showCancel: true,
+        confirmText: `Sí, ${action}`,
+        cancelText: 'Cancelar',
+        confirmColor: currentStatus ? '#F59E0B' : '#10B981',
+        cancelColor: '#6B7280',
+        onConfirm: async () => {
+          setAlert({ open: false });
+          try {
+            const response = await api.patch(`/dishes/${id}/toggle-status`);
+            setAlert({
+              open: true,
+              type: 'success',
+              title: `¡${actionPast.charAt(0).toUpperCase() + actionPast.slice(1)}!`,
+              text: response.data.message,
+              timer: 3000,
+              confirmColor: '#10B981',
+              onConfirm: () => setAlert({ open: false }),
+            });
+            fetchDishes();
+          } catch (err: any) {
+            setAlert({
+              open: true,
+              type: 'error',
+              title: 'Error',
+              text: err.response?.data?.message || `Error al cambiar estado del platillo`,
+              confirmColor: '#EF4444',
+              onConfirm: () => setAlert({ open: false }),
+            });
+          }
+        },
+        onCancel: () => setAlert({ open: false }),
       });
-
-      if (result.isConfirmed) {
-        const response = await api.patch(`/dishes/${id}/toggle-status`);
-        
-        await Swal.fire({
-          title: `¡${actionPast.charAt(0).toUpperCase() + actionPast.slice(1)}!`,
-          text: response.data.message,
-          icon: 'success',
-          confirmButtonText: 'Continuar',
-          confirmButtonColor: '#10B981',
-          timer: 3000,
-          timerProgressBar: true,
-        });
-        
-        fetchDishes();
-      }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || `Error al cambiar estado del platillo`;
-      await Swal.fire({
+      setAlert({
+        open: true,
+        type: 'error',
         title: 'Error',
-        text: errorMessage,
-        icon: 'error',
-        confirmButtonText: 'Entendido',
-        confirmButtonColor: '#EF4444',
+        text: err.response?.data?.message || `Error al cambiar estado del platillo`,
+        confirmColor: '#EF4444',
+        onConfirm: () => setAlert({ open: false }),
       });
     }
   };
@@ -729,7 +743,9 @@ export default function DishesPage() {
       const { canDelete, canDeactivate, mealLogsCount, message, currentStatus } = dependenciesResponse.data;
 
       if (!canDelete) {
-        const result = await Swal.fire({
+        setAlert({
+          open: true,
+          type: 'warning',
           title: '⚠️ No se puede eliminar',
           html: `
             <div class="text-left">
@@ -742,34 +758,23 @@ export default function DishesPage() {
               </p>
             </div>
           `,
-          icon: 'warning',
-          showDenyButton: true,
-          showCancelButton: true,
-          confirmButtonText: currentStatus ? '⏸️ Desactivar' : '▶️ Activar',
-          denyButtonText: '📋 Ver Registros',
-          cancelButtonText: 'Cancelar',
-          confirmButtonColor: currentStatus ? '#F59E0B' : '#10B981',
-          denyButtonColor: '#3B82F6',
-          cancelButtonColor: '#6B7280',
+          showCancel: true,
+          confirmText: currentStatus ? '⏸️ Desactivar' : '▶️ Activar',
+          cancelText: 'Cancelar',
+          confirmColor: currentStatus ? '#F59E0B' : '#10B981',
+          cancelColor: '#6B7280',
+          onConfirm: () => {
+            setAlert({ open: false });
+            handleToggleStatus(id, dishName, currentStatus);
+          },
+          onCancel: () => setAlert({ open: false }),
         });
-
-        if (result.isConfirmed) {
-          // Desactivar/Activar el platillo
-          await handleToggleStatus(id, dishName, currentStatus);
-        } else if (result.isDenied) {
-          // Redirigir a meal logs (funcionalidad futura)
-          await Swal.fire({
-            title: 'Funcionalidad próximamente',
-            text: 'La redirección a registros de comida estará disponible pronto.',
-            icon: 'info',
-            confirmButtonColor: '#3B82F6',
-          });
-        }
         return;
       }
 
-      // Si se puede eliminar, mostrar confirmación normal
-      const result = await Swal.fire({
+      setAlert({
+        open: true,
+        type: 'question',
         title: '¿Eliminar platillo?',
         html: `
           <div class="text-center">
@@ -779,52 +784,49 @@ export default function DishesPage() {
             <p class="mt-3 text-sm text-gray-600">Esta acción no se puede deshacer.</p>
           </div>
         `,
-        icon: 'question',
-        showCancelButton: true,
-        confirmButtonText: 'Sí, eliminar',
-        cancelButtonText: 'Cancelar',
-        confirmButtonColor: '#EF4444',
-        cancelButtonColor: '#6B7280',
-        focusCancel: true,
+        showCancel: true,
+        confirmText: 'Sí, eliminar',
+        cancelText: 'Cancelar',
+        confirmColor: '#EF4444',
+        cancelColor: '#6B7280',
+        onConfirm: async () => {
+          setAlert({ open: false });
+          try {
+            await api.delete(`/dishes/${id}`);
+            setAlert({
+              open: true,
+              type: 'success',
+              title: '¡Eliminado!',
+              text: `El platillo "${dishName}" ha sido eliminado exitosamente.`,
+              timer: 3000,
+              confirmColor: '#10B981',
+              onConfirm: () => setAlert({ open: false }),
+            });
+            fetchDishes();
+          } catch (err: any) {
+            setAlert({
+              open: true,
+              type: 'error',
+              title: 'Error al eliminar',
+              text: err.response?.data?.message || 'Error al eliminar platillo',
+              confirmColor: '#EF4444',
+              onConfirm: () => setAlert({ open: false }),
+            });
+            setError(err.response?.data?.message || 'Error al eliminar platillo');
+          }
+        },
+        onCancel: () => setAlert({ open: false }),
       });
-
-      if (result.isConfirmed) {
-        // Mostrar loading
-        Swal.fire({
-          title: 'Eliminando...',
-          text: 'Por favor espere',
-          icon: 'info',
-          allowOutsideClick: false,
-          showConfirmButton: false,
-          willOpen: () => {
-            Swal.showLoading();
-          },
-        });
-
-        await api.delete(`/dishes/${id}`);
-        
-        await Swal.fire({
-          title: '¡Eliminado!',
-          text: `El platillo "${dishName}" ha sido eliminado exitosamente.`,
-          icon: 'success',
-          confirmButtonText: 'Continuar',
-          confirmButtonColor: '#10B981',
-          timer: 3000,
-          timerProgressBar: true,
-        });
-        
-        fetchDishes();
-      }
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || 'Error al eliminar platillo';
-      await Swal.fire({
+      setAlert({
+        open: true,
+        type: 'error',
         title: 'Error al eliminar',
-        text: errorMessage,
-        icon: 'error',
-        confirmButtonText: 'Entendido',
-        confirmButtonColor: '#EF4444',
+        text: err.response?.data?.message || 'Error al eliminar platillo',
+        confirmColor: '#EF4444',
+        onConfirm: () => setAlert({ open: false }),
       });
-      setError(errorMessage);
+      setError(err.response?.data?.message || 'Error al eliminar platillo');
     }
   };
 
@@ -1064,6 +1066,9 @@ export default function DishesPage() {
         dish={selectedDish}
         onRefresh={fetchDishes}
       />
+
+      {/* SweetAlert global */}
+      <SweetAlert {...alert} />
     </div>
   );
 }

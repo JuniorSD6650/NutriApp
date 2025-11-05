@@ -138,4 +138,44 @@ export class NinosService {
       }
     };
   }
+
+  async deactivateChild(id: string) {
+    const nino = await this.ninoRepository.findOne({ where: { id } });
+    if (!nino) {
+      throw new NotFoundException('Niño no encontrado');
+    }
+    if (!nino.activo) {
+      return { message: `El niño "${nino.nombre}" ya está desactivado.` };
+    }
+    nino.activo = false;
+    await this.ninoRepository.save(nino);
+    return {
+      message: `Niño "${nino.nombre}" desactivado exitosamente`,
+      child: {
+        id: nino.id,
+        nombre: nino.nombre,
+        activo: nino.activo,
+      }
+    };
+  }
+
+  async activateChild(id: string) {
+    const nino = await this.ninoRepository.findOne({ where: { id } });
+    if (!nino) {
+      throw new NotFoundException('Niño no encontrado');
+    }
+    if (nino.activo) {
+      return { message: `El niño "${nino.nombre}" ya está activado.` };
+    }
+    nino.activo = true;
+    await this.ninoRepository.save(nino);
+    return {
+      message: `Niño "${nino.nombre}" activado exitosamente`,
+      child: {
+        id: nino.id,
+        nombre: nino.nombre,
+        activo: nino.activo,
+      }
+    };
+  }
 }

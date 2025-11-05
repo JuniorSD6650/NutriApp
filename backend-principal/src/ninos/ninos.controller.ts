@@ -53,4 +53,22 @@ export class NinosController {
     // Los admins pueden eliminar cualquier niño, las madres solo los suyos
     return this.ninosService.remove(id, req.user.id, req.user.rol);
   }
+
+  @Patch(':id/deactivate')
+  @ApiOperation({ summary: 'Desactivar un niño' })
+  @ApiParam({ name: 'id', description: 'ID del niño' })
+  @ApiResponse({ status: 200, description: 'Niño desactivado exitosamente' })
+  @ApiResponse({ status: 404, description: 'Niño no encontrado' })
+  deactivateChild(@Param('id') id: string) {
+    return this.ninosService.deactivateChild(id);
+  }
+
+  @Patch(':id/activate')
+  @ApiOperation({ summary: 'Activar un niño' })
+  @ApiParam({ name: 'id', description: 'ID del niño' })
+  @ApiResponse({ status: 200, description: 'Niño activado exitosamente' })
+  @ApiResponse({ status: 404, description: 'Niño no encontrado' })
+  activateChild(@Param('id') id: string) {
+    return this.ninosService.activateChild(id);
+  }
 }

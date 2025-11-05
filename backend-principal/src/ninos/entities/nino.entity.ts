@@ -41,6 +41,9 @@ export class Nino {
   @UpdateDateColumn()
   updated_at: Date;
 
+  @Column({ default: true })
+  activo: boolean;
+
   // Método helper para calcular la edad en meses
   getAgeInMonths(): number {
     const now = new Date();
