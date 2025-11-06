@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
+import { IngredientesModule } from './ingredientes/ingredientes.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,6 +35,8 @@ import { AuthModule } from './auth/auth.module';
     UsersModule,
 
     AuthModule,
+
+    IngredientesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
