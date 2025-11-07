@@ -7,9 +7,12 @@ import {
   CreateDateColumn, 
   UpdateDateColumn,
   ManyToOne,
-  OneToMany  
+  OneToMany,
+  OneToOne
 } from 'typeorm';
-import { Role } from '../enums/role.enum'; 
+import { Role } from '../enums/role.enum';
+import { PacienteProfile } from './paciente-profile.entity';
+import { MedicoProfile } from './medico-profile.entity';
 
 @Entity('users')
 export class User {
@@ -53,9 +56,19 @@ export class User {
   )
   pacientes: User[];
   
+  @OneToOne(() => PacienteProfile, (profile) => profile.user, { nullable: true })
+  pacienteProfile?: PacienteProfile;
+
+  @OneToOne(() => MedicoProfile, (profile) => profile.user, { nullable: true })
+  medicoProfile?: MedicoProfile;
+  
   @CreateDateColumn()
   createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;
+  
+  // Si usas soft delete en User, puedes agregar:
+  // @DeleteDateColumn()
+  // deletedAt: Date;
 }

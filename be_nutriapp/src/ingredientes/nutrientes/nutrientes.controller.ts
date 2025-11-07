@@ -11,7 +11,7 @@ import { RolesGuard } from '../../auth/guards/roles.guard';
 import { Roles } from '../../auth/decorators/roles.decorator';
 import { Role } from '../../users/enums/role.enum';
 import { QueryNutrienteDto } from './dto/query-nutriente.dto';
-import { ConfirmDeleteDto } from '../../common/dto/confirm-delete.dto'; 
+import { ConfirmDeleteDto } from '../../common/dto/confirm-delete.dto';
 
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 @Roles(Role.ADMIN)
@@ -52,7 +52,7 @@ export class NutrientesController {
     return this.nutrientesService.restore(id);
   }
 
-  @Delete(':id/force') // <- Eliminar Permanentemente (Hard Delete)
+  @Post(':id/force-delete')
   remove(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() confirmDeleteDto: ConfirmDeleteDto // <-- PEDIR CONFIRMACIÓN

@@ -63,7 +63,7 @@ export class IngredientesController {
     return this.ingredientesService.restore(id);
   }
 
-  @Delete(':id/force')
+  @Post(':id/force-delete')
   @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Roles(Role.ADMIN)
   remove(

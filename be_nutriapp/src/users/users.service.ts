@@ -1,10 +1,16 @@
 // src/users/users.service.ts
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull, Not, Like } from 'typeorm';
 import { User } from './entities/user.entity';
+import { PacienteProfile } from './entities/paciente-profile.entity';
+import { MedicoProfile } from './entities/medico-profile.entity';
 import { Role } from './enums/role.enum';
+import { QueryUserDto } from './dto/query-user.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { FiltroEstado } from '../common/enums/filtro-estado.enum';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -13,7 +19,11 @@ export class UsersService {
     constructor(
         @InjectRepository(User)
         private readonly userRepository: Repository<User>,
-    ) { }
+        @InjectRepository(PacienteProfile)
+        private readonly pacienteProfileRepository: Repository<PacienteProfile>,
+        @InjectRepository(MedicoProfile)
+        private readonly medicoProfileRepository: Repository<MedicoProfile>,
+    ) {}
 
     async validateUser(email: string, pass: string): Promise<User | null> {
         const user = await this.findOneByEmail(email);
@@ -25,24 +35,100 @@ export class UsersService {
         return null;
     }
 
-    async create(
-        email: string,
-        pass: string,
-        name: string,
-        role: Role,
-    ): Promise<User> {
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(pass, salt);
-
-        const newUser = this.userRepository.create({
-            email: email,
-            password: hashedPassword,
-            name: name,
-            role: role,
+    async findAll(query: QueryUserDto) {
+        const { page = 1, limit = 5, search, estado = FiltroEstado.ACTIVO } = query;
+        const skip = (page - 1) * limit;
+        const where: any = {};
+        if (search) {
+            where.name = Like(`%${search}%`);
+        }
+        if (estado === FiltroEstado.ACTIVO) {
+            where.isActive = true;
+        } else if (estado === FiltroEstado.INACTIVO) {
+            where.isActive = false;
+        }
+        const [data, total] = await this.userRepository.findAndCount({
+            where,
+            take: limit,
+            skip,
+            order: { createdAt: 'DESC' },
         });
+        return {
+            data,
+            total,
+            page,
+            limit,
+            totalPages: Math.ceil(total / limit),
+        };
+    }
 
-        return this.userRepository.save(newUser);
+    async findOne(id: string) {
+        const user = await this.userRepository.findOne({ where: { id } });
+        if (!user) throw new NotFoundException(`Usuario con ID ${id} no encontrado`);
+        return user;
+    }
+
+    async createUser(createUserDto: CreateUserDto): Promise<User> {
+        const { email, password, name, role } = createUserDto;
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        try {
+            const newUser = this.userRepository.create({
+                email,
+                password: hashedPassword,
+                name,
+                role,
+            });
+            return await this.userRepository.save(newUser);
+        } catch (error) {
+            if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+                throw new ConflictException('Ya existe un usuario con ese email');
+            }
+            throw error;
+        }
+    }
+
+    async update(id: string, updateUserDto: UpdateUserDto) {
+        const user = await this.findOne(id);
+        Object.assign(user, updateUserDto);
+        try {
+            return await this.userRepository.save(user);
+        } catch (error) {
+            if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+                throw new ConflictException('Ya existe un usuario con ese email');
+            }
+            throw error;
+        }
+    }
+
+    async deactivate(id: string) {
+        const user = await this.findOne(id);
+        if (!user.isActive) {
+            throw new ConflictException('El usuario ya está inactivo');
+        }
+        user.isActive = false;
+        await this.userRepository.save(user);
+        return { message: `Usuario ${user.name} desactivado.` };
+    }
+
+    async restore(id: string) {
+        const user = await this.findOne(id);
+        if (user.isActive) {
+            throw new ConflictException('El usuario ya está activo');
+        }
+        user.isActive = true;
+        await this.userRepository.save(user);
+        return { message: `Usuario ${user.name} activado.` };
+    }
+
+    async remove(id: string, confirmName: string) {
+        const user = await this.findOne(id);
+        if (user.name !== confirmName) {
+            throw new BadRequestException(`El nombre de confirmación '${confirmName}' no coincide con '${user.name}'.`);
+        }
+        await this.userRepository.remove(user);
+        return { message: `Usuario ${user.name} eliminado permanentemente.` };
     }
 
     async findOneByEmail(email: string): Promise<User | null> {
