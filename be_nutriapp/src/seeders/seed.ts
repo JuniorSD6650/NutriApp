@@ -14,6 +14,10 @@ import { FiltroEstado } from '../common/enums/filtro-estado.enum';
 import { IngredientesService } from '../ingredientes/ingredientes.service';
 import { ingredientesSeed } from './ingredientes.seed';
 import { ingredienteNutrientesSeed } from './ingrediente-nutrientes.seed';
+import { DataSource } from 'typeorm';
+import { platillosSeed } from './platillos.seed';
+import { registrosSeed } from './registros.seed';
+import { metasSeed } from './metas.seed';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -122,6 +126,12 @@ async function bootstrap() {
     }
     console.log('Ingredientes y relaciones sembrados.');
 
+    // --- 6. Sembrado de Platillos ---
+    const dataSource = app.get(DataSource);
+    await platillosSeed(dataSource);
+    await registrosSeed(dataSource);
+    await metasSeed(dataSource);
+    console.log('Platillos, registros y metas sembrados.');
   } catch (error) {
     console.error('Error durante el sembrado:', error);
   } finally {

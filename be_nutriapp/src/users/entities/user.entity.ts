@@ -1,3 +1,4 @@
+import { MetaDiaria } from '../../metas/entities/meta-diaria.entity';
 // src/users/entities/user.entity.ts
 
 import { 
@@ -16,6 +17,8 @@ import { MedicoProfile } from './medico-profile.entity';
 
 @Entity('users')
 export class User {
+  @OneToMany(() => MetaDiaria, (meta) => meta.paciente)
+  metas: MetaDiaria[];
 
   @PrimaryGeneratedColumn('uuid')
   id: string;

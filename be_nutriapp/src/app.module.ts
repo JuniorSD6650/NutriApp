@@ -9,6 +9,10 @@ import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { IngredientesModule } from './ingredientes/ingredientes.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { RegistrosModule } from './registros/registros.module';
+import { MetaDiaria } from './metas/entities/meta-diaria.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -25,9 +29,8 @@ import { IngredientesModule } from './ingredientes/ingredientes.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
-
         autoLoadEntities: true,
-
+        entities: [MetaDiaria],
         synchronize: true,
       }),
     }),
@@ -37,6 +40,11 @@ import { IngredientesModule } from './ingredientes/ingredientes.module';
     AuthModule,
 
     IngredientesModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(__dirname, '..', 'uploads'),
+      serveRoot: '/uploads',
+    }),
+    RegistrosModule,
   ],
   controllers: [AppController],
   providers: [AppService],
