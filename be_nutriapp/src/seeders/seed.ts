@@ -18,11 +18,12 @@ import { DataSource } from 'typeorm';
 import { platillosSeed } from './platillos.seed';
 import { registrosSeed } from './registros.seed';
 import { metasSeed } from './metas.seed';
+import { platilloIngredientesSeed } from './platillo-ingredientes.seed';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
   console.log('🌱 Comenzando el sembrado (seeding)...');
-  
+
   try {
     const usersService = app.get(UsersService);
     for (const userData of usersSeed) {
@@ -35,7 +36,7 @@ async function bootstrap() {
       }
     }
 
-  const pacienteProfilesService = app.get(PacienteProfilesService);
+    const pacienteProfilesService = app.get(PacienteProfilesService);
     for (const profileData of pacientesProfilesSeed) {
       const user = await usersService.findOneByEmail(profileData.userEmail);
       if (!user) {
@@ -58,7 +59,7 @@ async function bootstrap() {
       console.log(`✓ Perfil de paciente para ${profileData.userEmail} creado.`);
     }
 
-  const medicoProfilesService = app.get(MedicoProfilesService);
+    const medicoProfilesService = app.get(MedicoProfilesService);
     for (const profileData of medicosProfilesSeed) {
       const user = await usersService.findOneByEmail(profileData.userEmail);
       if (!user) {
@@ -69,7 +70,7 @@ async function bootstrap() {
         especialidad: profileData.specialty || 'Nutriología',
         numero_colegiado: profileData.licenseNumber || 'MED123456',
         biografia: '',
-        user: user, 
+        user: user,
       };
       if (user.medicoProfile) {
         console.log(`Perfil de médico para ${profileData.userEmail} ya existe. Omitiendo.`);
@@ -97,7 +98,7 @@ async function bootstrap() {
     // --- 5. Sembrado de Ingredientes ---
     const ingredientesService = app.get(IngredientesService);
     // Obtener todos los nutrientes para mapear nombre->id
-  const allNutrientes = await nutrientesService.findAll({ page: 1, limit: 100, estado: FiltroEstado.ACTIVO });
+    const allNutrientes = await nutrientesService.findAll({ page: 1, limit: 100, estado: FiltroEstado.ACTIVO });
     const nutrientesMap = {};
     for (const n of allNutrientes.data) {
       nutrientesMap[n.name] = n.id;
@@ -128,10 +129,11 @@ async function bootstrap() {
 
     // --- 6. Sembrado de Platillos ---
     const dataSource = app.get(DataSource);
-    await platillosSeed(dataSource);
-    await registrosSeed(dataSource);
-    await metasSeed(dataSource);
-    console.log('Platillos, registros y metas sembrados.');
+  await platillosSeed(dataSource);
+  await platilloIngredientesSeed(dataSource);
+  await registrosSeed(dataSource);
+  await metasSeed(dataSource);
+  console.log('Platillos, ingredientes de platillo, registros y metas sembrados.');
   } catch (error) {
     console.error('Error durante el sembrado:', error);
   } finally {

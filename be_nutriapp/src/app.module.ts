@@ -13,6 +13,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { RegistrosModule } from './registros/registros.module';
 import { MetaDiaria } from './metas/entities/meta-diaria.entity';
+import { Platillo } from './platillos/entities/platillo.entity';
+import { PlatilloIngrediente } from './platillos/entities/platillo-ingrediente.entity';
+import { RegistroConsumo } from './registros/entities/registro-consumo.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -30,7 +33,7 @@ import { MetaDiaria } from './metas/entities/meta-diaria.entity';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-        entities: [MetaDiaria],
+  entities: [MetaDiaria, Platillo, PlatilloIngrediente, RegistroConsumo],
         synchronize: true,
       }),
     }),
