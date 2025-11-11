@@ -34,4 +34,14 @@ export class MetasService {
   async obtenerMetasPorPaciente(pacienteId: string) {
     return this.metaRepository.find({ where: { paciente: { id: pacienteId } }, order: { fecha: 'DESC' } });
   }
+
+  async obtenerMetaActivaPorPaciente(pacienteId: string) {
+    // Puedes definir "activa" como la más reciente, o con un campo específico si lo tienes
+    const metas = await this.metaRepository.find({
+      where: { paciente: { id: pacienteId } },
+      order: { fecha: 'DESC' },
+      take: 1,
+    });
+    return metas[0] || null;
+  }
 }

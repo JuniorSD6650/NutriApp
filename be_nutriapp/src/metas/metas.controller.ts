@@ -1,3 +1,4 @@
+
 import { Controller, Post, Body, Req, UseGuards, Get, Param } from '@nestjs/common';
 import { MetasService } from './metas.service';
 import { CreateMetaDto } from './dto/create-meta.dto';
@@ -24,5 +25,13 @@ export class MetasController {
   @Roles(Role.MEDICO, Role.PACIENTE)
   async obtenerMetasPorPaciente(@Param('pacienteId') pacienteId: string) {
     return this.metasService.obtenerMetasPorPaciente(pacienteId);
+  }
+
+  @Get('mi-meta-activa')
+  @Roles(Role.PACIENTE)
+  async obtenerMiMetaActiva(@Req() req) {
+    const pacienteId = req.user?.sub || req.user?.id;
+    if (!pacienteId) throw new Error('No se pudo determinar el id del paciente autenticado');
+    return this.metasService.obtenerMetaActivaPorPaciente(pacienteId);
   }
 }
