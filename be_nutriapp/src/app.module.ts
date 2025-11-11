@@ -17,6 +17,8 @@ import { Platillo } from './platillos/entities/platillo.entity';
 import { PlatilloIngrediente } from './platillos/entities/platillo-ingrediente.entity';
 import { RegistroConsumo } from './registros/entities/registro-consumo.entity';
 import { RefreshToken } from './auth/entities/refresh-token.entity';
+import { PlatillosModule } from './platillos/platillos.module';
+import { MetasModule } from './metas/metas.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -48,7 +50,9 @@ import { RefreshToken } from './auth/entities/refresh-token.entity';
       rootPath: join(__dirname, '..', 'uploads'),
       serveRoot: '/uploads',
     }),
-    RegistrosModule,
+  PlatillosModule,
+  RegistrosModule,
+  MetasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -67,10 +67,29 @@ export class PlatillosService {
     const platillo = await this.platilloRepository.findOne({
       where,
       withDeleted: includeInactive,
-      relations: ['ingredientes', 'ingredientes.ingrediente'],
+      relations: ['ingredientes', 'ingredientes.ingrediente', 'ingredientes.ingrediente.nutrientes', 'ingredientes.ingrediente.nutrientes.nutriente'],
     });
     if (!platillo) throw new NotFoundException(`Platillo con ID ${id} no encontrado`);
-    return platillo;
+
+    // Calcular nutrientes totales
+    const nutrientesTotales: Record<string, number> = {};
+    for (const pi of platillo.ingredientes) {
+      const ingrediente = pi.ingrediente;
+      if (!ingrediente.nutrientes) continue;
+      for (const ingNut of ingrediente.nutrientes) {
+        const nombreNutriente = ingNut.nutriente?.name;
+        if (!nombreNutriente) continue;
+        // Proporción: (cantidad usada * valor por 100g) / 100
+        const aporte = (Number(pi.cantidad) * Number(ingNut.value_per_100g)) / 100;
+        if (!nutrientesTotales[nombreNutriente]) nutrientesTotales[nombreNutriente] = 0;
+        nutrientesTotales[nombreNutriente] += aporte;
+      }
+    }
+
+    return {
+      ...platillo,
+      nutrientesTotales,
+    };
   }
 
   async update(id: string, updatePlatilloDto: UpdatePlatilloDto) {

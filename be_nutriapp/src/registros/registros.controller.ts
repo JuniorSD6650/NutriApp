@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Query, Param, UploadedFile, UseInterceptors, UseGuards, Req, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Query, Param, UploadedFile, UseInterceptors, UseGuards, Req, ParseUUIDPipe, Patch, Delete } from '@nestjs/common';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../users/enums/role.enum';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -6,6 +6,8 @@ import { RegistrosService } from './registros.service';
 import { CreateRegistroConsumoDto } from './dto/create-registro-consumo.dto';
 import { QueryRegistroConsumoDto } from './dto/query-registro-consumo.dto';
 import { AuthGuard } from '@nestjs/passport';
+import { UpdateRegistroConsumoDto } from './dto/update-registro-consumo.dto';
+import { ConfirmDeleteDto } from '../common/dto/confirm-delete.dto';
 
 @UseGuards(AuthGuard('jwt'))
 @Controller('registros')
@@ -46,5 +48,54 @@ export class RegistrosController {
   async findOne(@Req() req, @Param('id', ParseUUIDPipe) id: string) {
     const userId = req.user.id;
     return this.registrosService.findOne(userId, id);
+  }
+
+  // PATCH /registros/consumo/:id
+  @Patch('consumo/:id')
+  async update(
+    @Req() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateRegistroConsumoDto
+  ) {
+    const userId = req.user.id;
+    return this.registrosService.update(userId, id, dto);
+  }
+
+  // DELETE /registros/consumo/:id
+  @Delete('consumo/:id')
+  async remove(
+    @Req() req,
+    @Param('id', ParseUUIDPipe) id: string
+  ) {
+    const userId = req.user.id;
+    return this.registrosService.softDelete(userId, id);
+  }
+
+  // PATCH /registros/consumo/:id/restore
+  @Patch('consumo/:id/restore')
+  async restore(
+    @Req() req,
+    @Param('id', ParseUUIDPipe) id: string
+  ) {
+    const userId = req.user.id;
+    return this.registrosService.restore(userId, id);
+  }
+
+  // POST /registros/consumo/:id/force-delete
+  @Post('consumo/:id/force-delete')
+  async forceDelete(
+    @Req() req,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() confirmDeleteDto: ConfirmDeleteDto
+  ) {
+    const userId = req.user.id;
+    return this.registrosService.forceDelete(userId, id, confirmDeleteDto.name);
+  }
+
+  // GET /registros/resumen-dia (para paciente autenticada)
+  @Get('resumen-dia')
+  async resumenDia(@Req() req, @Query('fecha') fecha: string) {
+    const userId = req.user.id;
+    return this.registrosService.resumenDia(userId, fecha);
   }
 }

@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, DeleteDateColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { TipoComida } from '../enums/tipo-comida.enum';
 
@@ -21,4 +21,7 @@ export class RegistroConsumo {
 
   @CreateDateColumn()
   fecha: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date | null;
 }

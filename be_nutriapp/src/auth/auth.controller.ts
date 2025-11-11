@@ -56,13 +56,4 @@ export class AuthController {
             : { ...safeUser, profile: null };
     }
 
-    @UseGuards(AuthGuard('jwt'), RolesGuard)
-    @Roles(Role.ADMIN)
-    @Get('admin-test')
-    adminTest(@Request() req) {
-        return {
-            message: '¡Bienvenido, Administrador!',
-            user: req.user,
-        };
-    }
 }

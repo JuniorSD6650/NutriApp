@@ -16,6 +16,58 @@ export class RegistrosService {
     private readonly userRepository: Repository<User>,
     private readonly profilesService: ProfilesService,
   ) {}
+
+  // PATCH /registros/consumo/:id
+  async update(userId: string, id: string, dto: any) {
+    const registro = await this.registroConsumoRepository.findOne({ where: { id }, relations: ['usuario'] });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+    if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');
+    Object.assign(registro, dto);
+    return this.registroConsumoRepository.save(registro);
+  }
+
+  // DELETE /registros/consumo/:id (soft delete)
+  async softDelete(userId: string, id: string) {
+    const registro = await this.registroConsumoRepository.findOne({ where: { id }, relations: ['usuario'] });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+    if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');
+    registro.deletedAt = new Date();
+    return this.registroConsumoRepository.save(registro);
+  }
+
+  // PATCH /registros/consumo/:id/restore
+  async restore(userId: string, id: string) {
+    const registro = await this.registroConsumoRepository.findOne({ where: { id }, relations: ['usuario'], withDeleted: true });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+    if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');
+  registro.deletedAt = null;
+    return this.registroConsumoRepository.save(registro);
+  }
+
+  // POST /registros/consumo/:id/force-delete
+  async forceDelete(userId: string, id: string, confirmName: string) {
+    const registro = await this.registroConsumoRepository.findOne({ where: { id }, relations: ['usuario'], withDeleted: true });
+    if (!registro) throw new NotFoundException('Registro no encontrado');
+    if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');
+    if (registro.usuario.name !== confirmName) throw new ForbiddenException('El nombre de confirmación no coincide');
+    await this.registroConsumoRepository.remove(registro);
+    return { message: 'Registro eliminado permanentemente.' };
+  }
+
+  // GET /registros/resumen-dia (para paciente autenticada)
+  async resumenDia(userId: string, fecha: string) {
+    // Sumar calorías, hierro, etc. Aquí solo ejemplo de conteo de registros
+    const fechaDate = new Date(fecha);
+    const registros = await this.registroConsumoRepository.find({
+      where: { usuario: { id: userId }, fecha: fechaDate, deletedAt: IsNull() },
+    });
+    // Aquí deberías sumar los nutrientes, por ahora solo cuenta
+    return {
+      totalRegistros: registros.length,
+      // totalHierro: ...
+      // totalCalorias: ...
+    };
+  }
   /**
    * Permite a un médico ver el resumen diario de un paciente si es su dueño
    */
