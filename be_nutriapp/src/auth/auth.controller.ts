@@ -31,8 +31,29 @@ export class AuthController {
 
     @UseGuards(AuthGuard('jwt'))
     @Get('profile')
-    getProfile(@Request() req) {
-        return req.user;
+    async getProfile(@Request() req) {
+        // req.user.sub contiene el id del usuario autenticado
+        const user = await this.authService.getUserWithProfiles(req.user.sub);
+        if (!user) return null;
+        // Excluir password y campos sensibles
+        const {
+            password,
+            refreshTokens,
+            ...safeUser
+        } = user;
+
+        let profile: any = null;
+        if (user.role === 'paciente' && user.pacienteProfile) {
+            const { user: _u, ...pacienteProfile } = user.pacienteProfile;
+            profile = pacienteProfile;
+        } else if (user.role === 'medico' && user.medicoProfile) {
+            const { user: _u, ...medicoProfile } = user.medicoProfile;
+            profile = medicoProfile;
+        }
+
+        return profile
+            ? { ...safeUser, profile }
+            : { ...safeUser, profile: null };
     }
 
     @UseGuards(AuthGuard('jwt'), RolesGuard)

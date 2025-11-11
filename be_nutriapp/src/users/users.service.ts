@@ -1,3 +1,4 @@
+// ...existing imports...
 // src/users/users.service.ts
 
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
@@ -24,6 +25,13 @@ export class UsersService {
         @InjectRepository(MedicoProfile)
         private readonly medicoProfileRepository: Repository<MedicoProfile>,
     ) {}
+
+    async findOneWithProfiles(id: string) {
+        return this.userRepository.findOne({
+            where: { id },
+            relations: ['pacienteProfile', 'medicoProfile'],
+        });
+    }
 
     async validateUser(email: string, pass: string): Promise<User | null> {
         const user = await this.findOneByEmail(email);

@@ -1,4 +1,5 @@
 // src/auth/auth.service.ts
+// src/auth/auth.service.ts
 import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,6 +17,10 @@ export class AuthService {
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
   ) { }
+
+  async getUserWithProfiles(id: string) {
+    return this.usersService.findOneWithProfiles(id);
+  }
 
   async signIn(email: string, pass: string) {
     const user = await this.usersService.validateUser(email, pass);
