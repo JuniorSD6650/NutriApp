@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { PacienteProfilesService } from './paciente-profiles.service';
 import { MedicoProfilesService } from './medico-profiles.service';
 import { CreatePacienteProfileDto } from './dto/create-paciente-profile.dto';
@@ -34,10 +35,19 @@ export class ProfilesController {
     return this.pacienteProfilesService.findOne(id);
   }
 
+  /**
+   * Crea o actualiza el perfil de paciente del usuario autenticado.
+   * Solo un perfil por usuario.
+   */
   @Post('pacientes')
-  @Roles(Role.ADMIN, Role.MEDICO)
-  createPaciente(@Body() dto: CreatePacienteProfileDto) {
-    return this.pacienteProfilesService.create(dto);
+  @Roles(Role.ADMIN, Role.MEDICO, Role.PACIENTE)
+  upsertPaciente(@Body() dto: CreatePacienteProfileDto, @Req() req: Request) {
+    const user: any = req.user;
+    const userId = user?.sub || user?.id || user?.userId;
+    if (!userId) {
+      throw new Error('No se pudo obtener el ID de usuario del token');
+    }
+    return this.pacienteProfilesService.upsertWithUser(dto, userId);
   }
 
   @Patch('pacientes/:id')
@@ -77,10 +87,17 @@ export class ProfilesController {
     return this.medicoProfilesService.findOne(id);
   }
 
+  /**
+   * Crea o actualiza el perfil de médico del usuario autenticado.
+   * Solo un perfil por usuario.
+   */
   @Post('medicos')
-  @Roles(Role.ADMIN)
-  createMedico(@Body() dto: CreateMedicoProfileDto) {
-    return this.medicoProfilesService.create(dto);
+  @Roles(Role.ADMIN, Role.MEDICO)
+  upsertMedico(@Body() dto: CreateMedicoProfileDto, @Req() req: Request) {
+    const user: any = req.user;
+    const userId = dto['userId'] || user?.sub || user?.id || user?.userId;
+    if (!userId) throw new Error('Debe especificar el userId o autenticarse');
+    return this.medicoProfilesService.upsertWithUser(dto, userId);
   }
 
   @Patch('medicos/:id')

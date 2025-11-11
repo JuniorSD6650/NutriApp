@@ -1,3 +1,4 @@
+import { RefreshToken } from '../../auth/entities/refresh-token.entity';
 import { MetaDiaria } from '../../metas/entities/meta-diaria.entity';
 // src/users/entities/user.entity.ts
 
@@ -19,6 +20,9 @@ import { MedicoProfile } from './medico-profile.entity';
 export class User {
   @OneToMany(() => MetaDiaria, (meta) => meta.paciente)
   metas: MetaDiaria[];
+
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
+  refreshTokens: RefreshToken[];
 
   @PrimaryGeneratedColumn('uuid')
   id: string;

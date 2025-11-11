@@ -16,6 +16,19 @@ export class AuthController {
         return this.authService.signIn(signInDto.email, signInDto.password);
     }
 
+    @HttpCode(HttpStatus.OK)
+    @Post('refresh')
+    refresh(@Body() body: { refresh_token: string }) {
+        return this.authService.refresh(body.refresh_token);
+    }
+
+    // (Opcional) Endpoint para "logout" (revocar refresh token si se almacena en BD)
+    @HttpCode(HttpStatus.OK)
+    @Post('logout')
+    logout(@Body() body: { refresh_token: string }) {
+        return this.authService.revokeRefreshToken(body.refresh_token);
+    }
+
     @UseGuards(AuthGuard('jwt'))
     @Get('profile')
     getProfile(@Request() req) {

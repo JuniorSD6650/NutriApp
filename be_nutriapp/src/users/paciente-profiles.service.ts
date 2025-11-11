@@ -56,6 +56,41 @@ export class PacienteProfilesService {
     }
   }
 
+  /**
+   * Crea un perfil de paciente asociado a un usuario existente.
+   * @param dto Datos del perfil de paciente
+   * @param userId ID del usuario autenticado
+   */
+  /**
+   * Crea o actualiza un perfil de paciente asociado a un usuario existente.
+   * Si ya existe, lo actualiza; si no, lo crea.
+   */
+  async upsertWithUser(dto: CreatePacienteProfileDto, userId: string) {
+    if (!userId) throw new BadRequestException('Falta el ID de usuario');
+    let existing = await this.pacienteProfileRepository.findOne({ where: { user: { id: userId } }, relations: ['user'] });
+    if (existing) {
+      Object.assign(existing, dto);
+      try {
+        return await this.pacienteProfileRepository.save(existing);
+      } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+          throw new ConflictException('Ya existe un perfil de paciente con esos datos');
+        }
+        throw error;
+      }
+    } else {
+      const entity = this.pacienteProfileRepository.create({ ...dto, user: { id: userId } });
+      try {
+        return await this.pacienteProfileRepository.save(entity);
+      } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+          throw new ConflictException('Ya existe un perfil de paciente con esos datos');
+        }
+        throw error;
+      }
+    }
+  }
+
   async update(id: string, dto: UpdatePacienteProfileDto) {
     const paciente = await this.findOne(id, true);
     Object.assign(paciente, dto);

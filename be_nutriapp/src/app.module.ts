@@ -16,6 +16,7 @@ import { MetaDiaria } from './metas/entities/meta-diaria.entity';
 import { Platillo } from './platillos/entities/platillo.entity';
 import { PlatilloIngrediente } from './platillos/entities/platillo-ingrediente.entity';
 import { RegistroConsumo } from './registros/entities/registro-consumo.entity';
+import { RefreshToken } from './auth/entities/refresh-token.entity';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -33,7 +34,7 @@ import { RegistroConsumo } from './registros/entities/registro-consumo.entity';
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_NAME'),
         autoLoadEntities: true,
-  entities: [MetaDiaria, Platillo, PlatilloIngrediente, RegistroConsumo],
+  entities: [MetaDiaria, Platillo, PlatilloIngrediente, RegistroConsumo, RefreshToken],
         synchronize: true,
       }),
     }),

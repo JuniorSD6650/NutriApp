@@ -56,6 +56,41 @@ export class MedicoProfilesService {
     }
   }
 
+  /**
+   * Crea un perfil de médico asociado a un usuario existente.
+   * @param dto Datos del perfil de médico
+   * @param userId ID del usuario autenticado
+   */
+  /**
+   * Crea o actualiza un perfil de médico asociado a un usuario existente.
+   * Si ya existe, lo actualiza; si no, lo crea.
+   */
+  async upsertWithUser(dto: CreateMedicoProfileDto, userId: string) {
+    if (!userId) throw new BadRequestException('Falta el ID de usuario');
+    let existing = await this.medicoProfileRepository.findOne({ where: { user: { id: userId } }, relations: ['user'] });
+    if (existing) {
+      Object.assign(existing, dto);
+      try {
+        return await this.medicoProfileRepository.save(existing);
+      } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+          throw new ConflictException('Ya existe un perfil de médico con esos datos');
+        }
+        throw error;
+      }
+    } else {
+      const entity = this.medicoProfileRepository.create({ ...dto, user: { id: userId } });
+      try {
+        return await this.medicoProfileRepository.save(entity);
+      } catch (error) {
+        if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
+          throw new ConflictException('Ya existe un perfil de médico con esos datos');
+        }
+        throw error;
+      }
+    }
+  }
+
   async update(id: string, dto: UpdateMedicoProfileDto) {
     const medico = await this.findOne(id, true);
     Object.assign(medico, dto);
