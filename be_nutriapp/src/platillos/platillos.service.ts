@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull, Not, Like } from 'typeorm';
+import { InjectRepository, InjectDataSource } from '@nestjs/typeorm';
+import { Repository, IsNull, Not, Like, DataSource } from 'typeorm';
 import { Platillo } from './entities/platillo.entity';
 import { PlatilloIngrediente } from './entities/platillo-ingrediente.entity';
 import { CreatePlatilloDto } from './dto/create-platillo.dto';
@@ -18,29 +18,40 @@ export class PlatillosService {
     private readonly platilloIngredienteRepository: Repository<PlatilloIngrediente>,
     @InjectRepository(Ingrediente)
     private readonly ingredienteRepository: Repository<Ingrediente>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(createPlatilloDto: CreatePlatilloDto) {
     const { nombre, descripcion, ingredientes } = createPlatilloDto;
-    // Validar nombre único
-    const exists = await this.platilloRepository.findOne({ where: { nombre } });
-    if (exists) throw new ConflictException('Ya existe un platillo con ese nombre');
-    // Crear platillo
-    const platillo = this.platilloRepository.create({ nombre, descripcion });
-    await this.platilloRepository.save(platillo);
-    // Crear ingredientes
-    for (const ing of ingredientes) {
-      const ingrediente = await this.ingredienteRepository.findOne({ where: { id: ing.ingredienteId } });
-      if (!ingrediente) throw new NotFoundException(`Ingrediente con ID ${ing.ingredienteId} no encontrado`);
-      const pi = this.platilloIngredienteRepository.create({
-        platillo,
-        ingrediente,
-        cantidad: ing.cantidad,
-        unidad: ing.unidad || 'g',
+    return await this.dataSource.transaction(async manager => {
+      // Validar nombre único
+      const exists = await manager.findOne(Platillo, { where: { nombre } });
+      if (exists) throw new ConflictException('Ya existe un platillo con ese nombre');
+      // Crear platillo
+      const platillo = manager.create(Platillo, { nombre, descripcion });
+      await manager.save(Platillo, platillo);
+      // Si no hay ingredientes, retorna el platillo vacío
+      if (!ingredientes || ingredientes.length === 0) return this.findOne(platillo.id);
+      // Optimización: buscar todos los ingredientes de una vez
+      const ids = ingredientes.map(i => i.ingredienteId);
+      const ingredientesDB = await manager.findByIds(Ingrediente, ids);
+      if (ingredientesDB.length !== ids.length) {
+        const notFound = ids.filter(id => !ingredientesDB.find(i => i.id === id));
+        throw new NotFoundException(`Ingredientes no encontrados: ${notFound.join(', ')}`);
+      }
+      const platilloIngredientes = ingredientes.map(ing => {
+        const ingrediente = ingredientesDB.find(i => i.id === ing.ingredienteId);
+        return manager.create(PlatilloIngrediente, {
+          platillo,
+          ingrediente,
+          cantidad: ing.cantidad,
+          unidad: ing.unidad || 'g',
+        });
       });
-      await this.platilloIngredienteRepository.save(pi);
-    }
-    return this.findOne(platillo.id);
+      await manager.save(PlatilloIngrediente, platilloIngredientes);
+      return this.findOne(platillo.id);
+    });
   }
 
   async findAll(query: QueryPlatilloDto) {
@@ -79,8 +90,10 @@ export class PlatillosService {
       for (const ingNut of ingrediente.nutrientes) {
         const nombreNutriente = ingNut.nutriente?.name;
         if (!nombreNutriente) continue;
-        // Proporción: (cantidad usada * valor por 100g) / 100
-        const aporte = (Number(pi.cantidad) * Number(ingNut.value_per_100g)) / 100;
+        // Proporción: (cantidad usada * valor por 100g) / 100, usando float
+        const cantidad = typeof pi.cantidad === 'string' ? Number(pi.cantidad) : pi.cantidad;
+        const valorPor100g = typeof ingNut.value_per_100g === 'string' ? Number(ingNut.value_per_100g) : ingNut.value_per_100g;
+        const aporte = (cantidad * valorPor100g) / 100;
         if (!nutrientesTotales[nombreNutriente]) nutrientesTotales[nombreNutriente] = 0;
         nutrientesTotales[nombreNutriente] += aporte;
       }
@@ -93,26 +106,42 @@ export class PlatillosService {
   }
 
   async update(id: string, updatePlatilloDto: UpdatePlatilloDto) {
-    const platillo = await this.findOne(id, true);
-    const { nombre, descripcion, ingredientes } = updatePlatilloDto;
-    if (nombre) platillo.nombre = nombre;
-    if (descripcion) platillo.descripcion = descripcion;
-    await this.platilloRepository.save(platillo);
-    if (ingredientes && ingredientes.length > 0) {
-      await this.platilloIngredienteRepository.delete({ platillo: { id } });
-      for (const ing of ingredientes) {
-        const ingrediente = await this.ingredienteRepository.findOne({ where: { id: ing.ingredienteId } });
-        if (!ingrediente) throw new NotFoundException(`Ingrediente con ID ${ing.ingredienteId} no encontrado`);
-        const pi = this.platilloIngredienteRepository.create({
-          platillo,
-          ingrediente,
-          cantidad: ing.cantidad,
-          unidad: ing.unidad || 'g',
-        });
-        await this.platilloIngredienteRepository.save(pi);
+    return await this.dataSource.transaction(async manager => {
+      const platillo = await manager.findOne(Platillo, {
+        where: { id },
+        relations: ['ingredientes'],
+        withDeleted: true,
+      });
+      if (!platillo) throw new NotFoundException(`Platillo con ID ${id} no encontrado`);
+      const { nombre, descripcion, ingredientes } = updatePlatilloDto;
+      if (nombre) platillo.nombre = nombre;
+      if (descripcion) platillo.descripcion = descripcion;
+      await manager.save(Platillo, platillo);
+      if (ingredientes) {
+        // Borra todos los ingredientes actuales
+        await manager.delete(PlatilloIngrediente, { platillo: { id } });
+        if (ingredientes.length > 0) {
+          // Optimización: buscar todos los ingredientes de una vez
+          const ids = ingredientes.map(i => i.ingredienteId);
+          const ingredientesDB = await manager.findByIds(Ingrediente, ids);
+          if (ingredientesDB.length !== ids.length) {
+            const notFound = ids.filter(id => !ingredientesDB.find(i => i.id === id));
+            throw new NotFoundException(`Ingredientes no encontrados: ${notFound.join(', ')}`);
+          }
+          const platilloIngredientes = ingredientes.map(ing => {
+            const ingrediente = ingredientesDB.find(i => i.id === ing.ingredienteId);
+            return manager.create(PlatilloIngrediente, {
+              platillo,
+              ingrediente,
+              cantidad: ing.cantidad,
+              unidad: ing.unidad || 'g',
+            });
+          });
+          await manager.save(PlatilloIngrediente, platilloIngredientes);
+        }
       }
-    }
-    return this.findOne(platillo.id);
+      return this.findOne(platillo.id);
+    });
   }
 
   async deactivate(id: string) {
