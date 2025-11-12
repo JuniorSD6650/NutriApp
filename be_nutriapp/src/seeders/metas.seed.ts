@@ -12,19 +12,17 @@ export const metasSeed = async (dataSource: DataSource) => {
   if (!paciente || !medico) return;
   await repo.save({
     fecha: new Date().toISOString().slice(0, 10),
-    caloriasObjetivo: 2000,
-    proteinasObjetivo: 100,
-    grasasObjetivo: 70,
-    carbohidratosObjetivo: 250,
+    hierroObjetivo: 18,
+    hierroConsumido: 0,
+    completada: false,
     paciente,
     medico,
   });
   await repo.save({
     fecha: new Date().toISOString().slice(0, 10),
-    caloriasObjetivo: 1800,
-    proteinasObjetivo: 90,
-    grasasObjetivo: 60,
-    carbohidratosObjetivo: 220,
+    hierroObjetivo: 15,
+    hierroConsumido: 0,
+    completada: false,
     paciente,
     medico,
   });

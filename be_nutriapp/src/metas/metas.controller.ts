@@ -1,5 +1,4 @@
-
-import { Controller, Post, Body, Req, UseGuards, Get, Param } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Get, Param, Patch } from '@nestjs/common';
 import { MetasService } from './metas.service';
 import { CreateMetaDto } from './dto/create-meta.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -10,6 +9,12 @@ import { Role } from '../users/enums/role.enum';
 @Controller('metas')
 @UseGuards(AuthGuard('jwt'))
 export class MetasController {
+  @Patch(':id')
+  @Roles(Role.MEDICO, Role.PACIENTE)
+  async actualizarMeta(@Param('id') id: string, @Body() body: { hierroConsumido?: number; completada?: boolean }) {
+    // Permite actualizar hierroConsumido y/o completada
+    return this.metasService.actualizarMeta(id, body);
+  }
   constructor(private readonly metasService: MetasService) {}
 
   @Post()

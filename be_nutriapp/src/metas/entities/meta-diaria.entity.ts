@@ -9,17 +9,16 @@ export class MetaDiaria {
   @Column({ type: 'date' })
   fecha: string;
 
+
+
   @Column({ type: 'float' })
-  caloriasObjetivo: number;
+  hierroObjetivo: number;
 
-  @Column({ type: 'float', nullable: true })
-  proteinasObjetivo?: number;
+  @Column({ type: 'float', default: 0 })
+  hierroConsumido: number;
 
-  @Column({ type: 'float', nullable: true })
-  grasasObjetivo?: number;
-
-  @Column({ type: 'float', nullable: true })
-  carbohidratosObjetivo?: number;
+  @Column({ type: 'boolean', default: false })
+  completada: boolean;
 
   @ManyToOne(() => User, (user) => user.metas, { eager: true, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'paciente_id' })
