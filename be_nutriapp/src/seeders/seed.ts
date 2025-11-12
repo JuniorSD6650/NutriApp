@@ -26,13 +26,53 @@ async function bootstrap() {
 
   try {
     const usersService = app.get(UsersService);
-    for (const userData of usersSeed) {
+    // 1. Insertar médicos y guardar email->id
+    const medicoEmailToId = {};
+    for (const userData of usersSeed.filter(u => u.role === 'medico')) {
+      const exists = await usersService.findOneByEmail(userData.email);
+      let medico;
+      if (exists) {
+        medico = exists;
+        console.log(`El médico ${userData.email} ya existe. Omitiendo.`);
+      } else {
+        medico = await usersService.createUser(userData);
+        console.log(`✓ Médico ${userData.email} creado.`);
+      }
+      medicoEmailToId[userData.email] = medico.id;
+    }
+
+    // 2. Insertar admin normalmente
+    const adminData = usersSeed.find(u => u.role === 'admin');
+    if (adminData) {
+      const exists = await usersService.findOneByEmail(adminData.email);
+      if (!exists) {
+        await usersService.createUser(adminData);
+        console.log(`✓ Admin ${adminData.email} creado.`);
+      }
+    }
+
+    // 3. Insertar pacientes, luego actualizar con medicoId real
+    for (const userData of usersSeed.filter(u => u.role === 'paciente')) {
       const exists = await usersService.findOneByEmail(userData.email);
       if (exists) {
-        console.log(`El usuario ${userData.email} ya existe. Omitiendo.`);
+        console.log(`El paciente ${userData.email} ya existe. Omitiendo.`);
+        continue;
+      }
+      // Extraer medicoId si existe (solo para pacientes)
+      const { medicoId, ...pacienteData } = userData as typeof userData & { medicoId?: number };
+      const paciente = await usersService.createUser(pacienteData);
+      // Asignar médico real si corresponde
+      if (medicoId) {
+        const medicoEmail = `medico${medicoId}@nutriapp.com`;
+        const medicoDbId = medicoEmailToId[medicoEmail];
+        if (medicoDbId) {
+          await usersService.asignarPacientesAMedico(medicoDbId, [paciente.id]);
+          console.log(`✓ Paciente ${userData.email} creado y asignado a médico ${medicoEmail}`);
+        } else {
+          console.log(`Paciente ${userData.email} creado pero médico ${medicoEmail} no encontrado.`);
+        }
       } else {
-        await usersService.createUser(userData);
-        console.log(`✓ Usuario ${userData.email} creado.`);
+        console.log(`✓ Paciente ${userData.email} creado sin médico asignado.`);
       }
     }
 
