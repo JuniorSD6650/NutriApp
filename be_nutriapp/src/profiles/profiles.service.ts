@@ -15,12 +15,12 @@ export class ProfilesService {
   /**
    * Verifica si el médico con id medicoId es dueño del paciente con id pacienteId
    */
-  async esDuenoDePaciente(medicoId: number, pacienteId: number): Promise<boolean> {
+  async esDuenoDePaciente(medicoId: string, pacienteId: string): Promise<boolean> {
     const medico = await this.userRepository.findOne({
-      where: { id: String(medicoId) },
+      where: { id: medicoId },
       relations: ['pacientes'],
     });
     if (!medico) return false;
-    return medico.pacientes.some((p) => p.id === String(pacienteId));
+    return medico.pacientes.some((p) => p.id === pacienteId);
   }
 }

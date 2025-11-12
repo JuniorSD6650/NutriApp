@@ -72,9 +72,9 @@ export class RegistrosService {
    * Permite a un médico ver el resumen diario de un paciente si es su dueño
    */
   async getResumenDiarioPorMedico(medicoId: string, pacienteId: string, fecha: string) {
-    // Verificar propiedad
-    const esDueno = await this.profilesService.esDuenoDePaciente(Number(medicoId), Number(pacienteId));
-    if (!esDueno) throw new ForbiddenException('No autorizado para ver el diario de este paciente');
+  // Verificar propiedad
+  const esDueno = await this.profilesService.esDuenoDePaciente(medicoId, pacienteId);
+  if (!esDueno) throw new ForbiddenException('No autorizado para ver el diario de este paciente');
     // Buscar registros del paciente en la fecha
     // Convertir fecha string a Date para la consulta
     const fechaDate = new Date(fecha);

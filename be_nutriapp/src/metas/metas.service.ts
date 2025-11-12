@@ -20,7 +20,7 @@ export class MetasService {
     const paciente = await this.usersService.findOne(dto.pacienteId);
     if (!paciente) throw new NotFoundException('Paciente no encontrado');
     // Verificar que el médico es dueño del paciente
-  const esDueno = await this.profilesService.esDuenoDePaciente(Number(medicoId), Number(dto.pacienteId));
+    const esDueno = await this.profilesService.esDuenoDePaciente(medicoId, dto.pacienteId);
     if (!esDueno) throw new ForbiddenException('No autorizado para asignar metas a este paciente');
     // Crear la meta
     const meta = this.metaRepository.create({
