@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Re
 import type { Request } from 'express';
 import { PacienteProfilesService } from './paciente-profiles.service';
 import { MedicoProfilesService } from './medico-profiles.service';
+import { UsersService } from './users.service';
 import { CreatePacienteProfileDto } from './dto/create-paciente-profile.dto';
 import { UpdatePacienteProfileDto } from './dto/update-paciente-profile.dto';
 import { QueryPacienteProfileDto } from './dto/query-paciente-profile.dto';
@@ -20,7 +21,8 @@ export class ProfilesController {
   constructor(
     private readonly pacienteProfilesService: PacienteProfilesService,
     private readonly medicoProfilesService: MedicoProfilesService,
-  ) {}
+    private readonly usersService: UsersService,
+  ) { }
 
   // PacienteProfile CRUD
   @Get('pacientes')
@@ -122,5 +124,23 @@ export class ProfilesController {
   @Roles(Role.ADMIN)
   forceDeleteMedico(@Param('id') id: string, @Body() confirm: ConfirmDeleteDto) {
     return this.medicoProfilesService.remove(id, confirm.name);
+  }
+
+  // Asignación de pacientes a médicos
+  @Get('medicos/:id/pacientes')
+  @Roles(Role.ADMIN, Role.MEDICO)
+  async getPacientesDeMedico(@Param('id') id: string) {
+    const medico = await this.usersService.findMedicoWithPacientes(id);
+    if (!medico) return [];
+    return medico.pacientes?.map((p: any) => ({ id: p.id, name: p.name })) || [];
+  }
+
+  @Post('medicos/:medicoId/asignar-pacientes')
+  @Roles(Role.ADMIN, Role.MEDICO)
+  async asignarPacientesAMedico(
+    @Param('medicoId') medicoId: string,
+    @Body('pacienteIds') pacienteIds: string[]
+  ) {
+    return this.usersService.asignarPacientesAMedico(medicoId, pacienteIds);
   }
 }

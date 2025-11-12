@@ -15,7 +15,7 @@ export class RegistrosController {
   constructor(private readonly registrosService: RegistrosService) {}
 
   @Get('consumo/paciente/:pacienteId')
-  @Roles(Role.MEDICO)
+  @Roles(Role.MEDICO, Role.ADMIN)
   async getResumenDiarioPorMedico(
     @Req() req,
     @Param('pacienteId') pacienteId: string,
@@ -26,6 +26,7 @@ export class RegistrosController {
   }
 
   @Post('consumo')
+  @Roles(Role.PACIENTE)
   @UseInterceptors(FileInterceptor('foto'))
   async create(
     @UploadedFile() foto: Express.Multer.File,
@@ -39,12 +40,14 @@ export class RegistrosController {
   }
 
   @Get('consumo')
+  @Roles(Role.PACIENTE)
   async findAll(@Req() req, @Query() query: QueryRegistroConsumoDto) {
     const userId = req.user.id;
     return this.registrosService.findAll(userId, query);
   }
 
   @Get('consumo/:id')
+  @Roles(Role.PACIENTE)
   async findOne(@Req() req, @Param('id', ParseUUIDPipe) id: string) {
     const userId = req.user.id;
     return this.registrosService.findOne(userId, id);
@@ -52,6 +55,7 @@ export class RegistrosController {
 
   // PATCH /registros/consumo/:id
   @Patch('consumo/:id')
+  @Roles(Role.PACIENTE)
   async update(
     @Req() req,
     @Param('id', ParseUUIDPipe) id: string,
@@ -63,6 +67,7 @@ export class RegistrosController {
 
   // DELETE /registros/consumo/:id
   @Delete('consumo/:id')
+  @Roles(Role.PACIENTE)
   async remove(
     @Req() req,
     @Param('id', ParseUUIDPipe) id: string
@@ -73,6 +78,7 @@ export class RegistrosController {
 
   // PATCH /registros/consumo/:id/restore
   @Patch('consumo/:id/restore')
+  @Roles(Role.PACIENTE)
   async restore(
     @Req() req,
     @Param('id', ParseUUIDPipe) id: string
@@ -94,6 +100,7 @@ export class RegistrosController {
 
   // GET /registros/resumen-dia (para paciente autenticada)
   @Get('resumen-dia')
+  @Roles(Role.PACIENTE)
   async resumenDia(@Req() req, @Query('fecha') fecha: string) {
     const userId = req.user.id;
     return this.registrosService.resumenDia(userId, fecha);

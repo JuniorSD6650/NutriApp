@@ -143,4 +143,32 @@ export class UsersService {
         return this.userRepository.findOne({ where: { email } });
     }
 
+    /**
+     * Devuelve el usuario médico con la relación pacientes
+     */
+    async findMedicoWithPacientes(id: string) {
+        return this.userRepository.findOne({
+            where: { id },
+            relations: ['pacientes'],
+            select: ['id', 'name', 'pacientes'],
+        });
+    }
+
+    /**
+     * Asigna uno o varios pacientes a un médico
+     */
+    async asignarPacientesAMedico(medicoId: string, pacienteIds: string[]) {
+        // Busca el médico
+        const medico = await this.userRepository.findOne({ where: { id: medicoId } });
+        if (!medico) throw new NotFoundException('Médico no encontrado');
+        // Busca los pacientes
+        const pacientes = await this.userRepository.findByIds(pacienteIds);
+        // Asigna el médico a cada paciente
+        for (const paciente of pacientes) {
+            paciente.medico = medico;
+        }
+        await this.userRepository.save(pacientes);
+        return { message: `Pacientes asignados correctamente`, total: pacientes.length };
+    }
+
 }
