@@ -11,15 +11,6 @@ class HomeScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('NutriApp'), // Usará el tema naranja
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              // Llama al AuthService para cerrar sesión
-              context.read<AuthService>().logout();
-            },
-          )
-        ],
       ),
       body: const Center(
         child: Text('¡Logueado! Esta es la pantalla principal.'),
