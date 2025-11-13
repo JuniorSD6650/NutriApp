@@ -24,7 +24,7 @@ export class UsersService {
         private readonly pacienteProfileRepository: Repository<PacienteProfile>,
         @InjectRepository(MedicoProfile)
         private readonly medicoProfileRepository: Repository<MedicoProfile>,
-    ) {}
+    ) { }
 
     async findOneWithProfiles(id: string) {
         return this.userRepository.findOne({
@@ -33,14 +33,24 @@ export class UsersService {
         });
     }
 
-    async validateUser(email: string, pass: string): Promise<User | null> {
-        const user = await this.findOneByEmail(email);
+    async validateUser(email: string, password: string): Promise<User | null> {
+        const user = await this.userRepository.findOne({ where: { email } });
 
-        if (user && user.password && (await bcrypt.compare(pass, user.password))) {
-            return user;
+        if (!user) {
+            return null; // Usuario no existe
         }
 
-        return null;
+        if (!user.password) {
+            return null; // No hay contraseña almacenada
+        }
+
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+
+        if (!isPasswordValid) {
+            return null; // Contraseña incorrecta
+        }
+
+        return user;
     }
 
 

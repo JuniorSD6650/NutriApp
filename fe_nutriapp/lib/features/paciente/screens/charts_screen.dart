@@ -1,4 +1,4 @@
-// lib/features/charts/charts_screen.dart
+// lib/features/paciente/screens/charts_screen.dart
 import 'package:flutter/material.dart';
 
 class ChartsScreen extends StatelessWidget {
@@ -8,7 +8,7 @@ class ChartsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Gráficas')),
-      body: const Center(child: Text('Pantalla de Gráficas (Charts)')),
+      body: const Center(child: Text('Pantalla de Gráficas del Paciente')),
     );
   }
 }

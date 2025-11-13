@@ -17,30 +17,54 @@ class _LoginScreenState extends State<LoginScreen> {
   String? _errorMessage;
 
   Future<void> _submitLogin() async {
+    final email = _emailController.text;
+    final password = _passwordController.text;
+
+    // --- 1. Validación del lado del cliente ---
+    if (email.isEmpty || password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Por favor, complete todos los campos.';
+      });
+      return; // No continuar si está vacío
+    }
+    
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() {
+        _errorMessage = 'Por favor, ingrese un correo válido.';
+      });
+      return;
+    }
+    
+    // Si pasa la validación, inicia la carga
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    print('Intentando login con: ${_emailController.text}');
     try {
-      // Llama al AuthService (que a su vez llama al ApiService)
+      // Llama al AuthService
       await context.read<AuthService>().login(
-            _emailController.text,
-            _passwordController.text,
+            email,
+            password,
           );
-      print('Login exitoso');
-      // Si llega aquí, el login fue exitoso y el 'Provider'
-      // se encargará de movernos a la pantalla de Home.
+      // Si llega aquí, el login fue exitoso
+
     } catch (e) {
-      print('Error en login: $e');
+      // --- 2. Manejo de Errores del Lado del Servidor ---
+      String message = e.toString();
+      
+      // Limpia el "Exception: " del mensaje
+      if (message.startsWith('Exception: ')) {
+        message = message.substring(11);
+      }
+
       setState(() {
-        _errorMessage = e.toString();
+        // Ahora _errorMessage solo será "Credenciales incorrectas"
+        // o "No se pudo conectar al servidor."
+        _errorMessage = message; 
         _isLoading = false;
       });
     }
-    // Si el login fue exitoso, _isLoading se apaga cuando el estado global cambia y la pantalla cambia.
-    // Si falla, ya se apaga arriba.
   }
 
   @override
@@ -55,7 +79,10 @@ class _LoginScreenState extends State<LoginScreen> {
             Text(
               'Bienvenido a NutriApp',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.headlineLarge,
+              // ¡Usa el tema que definiste!
+              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+                color: Theme.of(context).colorScheme.primary
+              ),
             ),
             const SizedBox(height: 40),
             TextField(
@@ -92,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 16),
                 child: Text(
-                  _errorMessage!,
+                  _errorMessage!, // <-- Ahora muestra un mensaje limpio
                   textAlign: TextAlign.center,
                   style: const TextStyle(color: Colors.red),
                 ),

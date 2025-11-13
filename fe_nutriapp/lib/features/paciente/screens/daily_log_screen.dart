@@ -1,4 +1,4 @@
-// lib/features/daily_log/daily_log_screen.dart
+// lib/features/paciente/screens/daily_log_screen.dart
 import 'package:flutter/material.dart';
 
 class DailyLogScreen extends StatelessWidget {
@@ -7,8 +7,8 @@ class DailyLogScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Diario')),
-      body: const Center(child: Text('Pantalla del Diario (Meals)')),
+      appBar: AppBar(title: const Text('Diario de Comidas')),
+      body: const Center(child: Text('Pantalla de "Meals" (Diario) del Paciente')),
     );
   }
 }

@@ -1,5 +1,4 @@
 // src/auth/auth.service.ts
-// src/auth/auth.service.ts
 import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -9,7 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entities/refresh-token.entity';
 
 @Injectable()
-export class AuthService {
+export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -23,26 +22,36 @@ export class AuthService {
   }
 
   async signIn(email: string, pass: string) {
+    // Validación básica
+    if (!email || !pass) {
+      throw new UnauthorizedException('Email y contraseña son requeridos');
+    }
+
     const user = await this.usersService.validateUser(email, pass);
+
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
+
     const payload = {
       sub: user.id,
       email: user.email,
       role: user.role,
     };
+
     const accessToken = await this.jwtService.signAsync(payload);
     const refreshToken = await this.jwtService.signAsync(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
       expiresIn: '30d',
     });
+
     // Guardar el refresh token en la base de datos
     await this.refreshTokenRepository.save({
       token: refreshToken,
       user: user,
       revoked: false,
     });
+
     return {
       access_token: accessToken,
       refresh_token: refreshToken,
