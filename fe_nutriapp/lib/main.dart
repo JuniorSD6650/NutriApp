@@ -5,10 +5,12 @@ import 'package:fe_nutriapp/core/theme/app_theme.dart';
 import 'package:fe_nutriapp/core/services/api_service.dart';
 import 'package:fe_nutriapp/core/services/auth_service.dart';
 import 'package:fe_nutriapp/features/auth/login_screen.dart';
-// ¡Ya no importamos HomeScreen, importamos el Despachador!
-import 'package:fe_nutriapp/features/navigation/role_dispatcher_screen.dart'; 
+import 'package:fe_nutriapp/features/navigation/role_dispatcher_screen.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await initializeDateFormatting('es_ES', null);
   // ... (el main() sigue igual)
   final apiService = ApiService();
   runApp(
@@ -40,17 +42,16 @@ class _MyAppState extends State<MyApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       themeMode: ThemeMode.light,
-      
+
       home: FutureBuilder(
         future: _tryAutoLoginFuture,
         builder: (context, snapshot) {
-          
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
               body: Center(child: CircularProgressIndicator()),
             );
           }
-          
+
           return Consumer<AuthService>(
             builder: (context, authService, child) {
               if (authService.isLoggedIn) {

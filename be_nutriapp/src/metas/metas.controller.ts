@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Req, UseGuards, Get, Param, Patch } from '@nestjs/common';
+import { Controller, Post, Body, Req, UseGuards, Get, Param, Patch, Query } from '@nestjs/common';
 import { MetasService } from './metas.service';
 import { CreateMetaDto } from './dto/create-meta.dto';
 import { AuthGuard } from '@nestjs/passport';
@@ -15,15 +15,15 @@ export class MetasController {
     // Permite actualizar hierroConsumido y/o completada
     return this.metasService.actualizarMeta(id, body);
   }
-  constructor(private readonly metasService: MetasService) {}
+  constructor(private readonly metasService: MetasService) { }
 
   @Post()
   @Roles(Role.MEDICO)
   async crearMeta(@Req() req, @Body() dto: CreateMetaDto) {
     // El id del médico viene del token
-  const medicoId = req.user?.sub || req.user?.id;
-  if (!medicoId) throw new Error('No se pudo determinar el id del médico autenticado');
-  return this.metasService.crearMeta(medicoId, dto);
+    const medicoId = req.user?.sub || req.user?.id;
+    if (!medicoId) throw new Error('No se pudo determinar el id del médico autenticado');
+    return this.metasService.crearMeta(medicoId, dto);
   }
 
   @Get('paciente/:pacienteId')
@@ -34,9 +34,14 @@ export class MetasController {
 
   @Get('mi-meta-activa')
   @Roles(Role.PACIENTE)
-  async obtenerMiMetaActiva(@Req() req) {
+  async obtenerMiMetaActiva(
+    @Req() req,
+    @Query('fecha') fecha?: string 
+  ) {
     const pacienteId = req.user?.sub || req.user?.id;
     if (!pacienteId) throw new Error('No se pudo determinar el id del paciente autenticado');
-    return this.metasService.obtenerMetaActivaPorPaciente(pacienteId);
+
+    // Pasar la fecha al servicio
+    return this.metasService.obtenerMetaActivaPorPaciente(pacienteId, fecha);
   }
 }

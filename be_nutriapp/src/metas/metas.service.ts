@@ -8,19 +8,19 @@ import { ProfilesService } from '../profiles/profiles.service';
 
 @Injectable()
 export class MetasService {
-    async actualizarMeta(id: string, body: { hierroConsumido?: number; completada?: boolean }) {
-      const meta = await this.metaRepository.findOne({ where: { id } });
-      if (!meta) throw new NotFoundException('Meta no encontrada');
-      if (typeof body.hierroConsumido === 'number') meta.hierroConsumido = body.hierroConsumido;
-      if (typeof body.completada === 'boolean') meta.completada = body.completada;
-      return this.metaRepository.save(meta);
-    }
+  async actualizarMeta(id: string, body: { hierroConsumido?: number; completada?: boolean }) {
+    const meta = await this.metaRepository.findOne({ where: { id } });
+    if (!meta) throw new NotFoundException('Meta no encontrada');
+    if (typeof body.hierroConsumido === 'number') meta.hierroConsumido = body.hierroConsumido;
+    if (typeof body.completada === 'boolean') meta.completada = body.completada;
+    return this.metaRepository.save(meta);
+  }
   constructor(
     @InjectRepository(MetaDiaria)
     private readonly metaRepository: Repository<MetaDiaria>,
     private readonly usersService: UsersService,
     private readonly profilesService: ProfilesService,
-  ) {}
+  ) { }
 
   async crearMeta(medicoId: string, dto: CreateMetaDto) {
     // Verificar que el paciente existe
@@ -44,13 +44,29 @@ export class MetasService {
     return this.metaRepository.find({ where: { paciente: { id: pacienteId } }, order: { fecha: 'DESC' } });
   }
 
-  async obtenerMetaActivaPorPaciente(pacienteId: string) {
-    // Meta activa: la más reciente no completada
-    const metas = await this.metaRepository.find({
-      where: { paciente: { id: pacienteId }, completada: false },
-      order: { fecha: 'DESC' },
-      take: 1,
-    });
-    return metas[0] || null;
+  async obtenerMetaActivaPorPaciente(pacienteId: string, fecha?: string) {
+
+    if (fecha) {
+      const targetDate = new Date(fecha).toISOString().split('T')[0];
+
+      const meta = await this.metaRepository.findOne({
+        where: {
+          paciente: { id: pacienteId },
+          fecha: targetDate
+        },
+        relations: ['paciente', 'medico'],
+      });
+
+      return meta; 
+
+    } else {
+      const metas = await this.metaRepository.find({
+        where: { paciente: { id: pacienteId }, completada: false },
+        order: { fecha: 'DESC' },
+        take: 1,
+        relations: ['paciente', 'medico'],
+      });
+      return metas[0] || null;
+    }
   }
 }

@@ -1,14 +1,14 @@
 // lib/core/services/api_service.dart
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:intl/intl.dart';
 
 class ApiService {
-  
   final Map<String, String> _ngrokHeaders = {
     'ngrok-skip-browser-warning': 'true',
   };
 
-  final String _baseUrl = "https://6a843927a0fe.ngrok-free.app";
+  final String _baseUrl = "https://72947d158411.ngrok-free.app";
 
   String? _token;
 
@@ -23,7 +23,7 @@ class ApiService {
 
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$_baseUrl/auth/login');
-    
+
     print('ApiService: POST $url');
     print('ApiService: body: email=$email, password=$password');
 
@@ -33,14 +33,8 @@ class ApiService {
     try {
       response = await http.post(
         url,
-        headers: {
-          ..._ngrokHeaders, 
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+        headers: {..._ngrokHeaders, 'Content-Type': 'application/json'},
+        body: jsonEncode({'email': email, 'password': password}),
       );
     } catch (e) {
       print('ApiService: Error de conexión: $e');
@@ -59,11 +53,11 @@ class ApiService {
     // 3. Manejo de errores del servidor (4xx, 5xx)
     try {
       final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-      
+
       // NestJS puede devolver 'message' como String o como Array
       final dynamic messageField = errorBody['message'];
       String errorMessage;
-      
+
       if (messageField is String) {
         errorMessage = messageField;
       } else if (messageField is List && messageField.isNotEmpty) {
@@ -72,10 +66,9 @@ class ApiService {
       } else {
         errorMessage = errorBody['error'] ?? 'Error desconocido';
       }
-      
+
       print('ApiService: Error del servidor: $errorMessage');
       throw Exception(errorMessage);
-      
     } catch (e) {
       // Si no se puede decodificar el JSON
       if (e is Exception && e.toString().contains('Exception:')) {
@@ -88,29 +81,66 @@ class ApiService {
 
   Future<Map<String, dynamic>> getProfile() async {
     final url = Uri.parse('$_baseUrl/auth/profile');
-    
+
     final response = await http.get(
       url,
-      headers: {
-        ..._ngrokHeaders,
-        'Content-Type': 'application/json',
-      },
+      headers: {..._ngrokHeaders, 'Content-Type': 'application/json'},
     );
-    
+
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return jsonDecode(response.body);
     }
-    
+
     // Manejo de errores similar
     try {
       final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-      final errorMessage = errorBody['message'] ?? errorBody['error'] ?? 'Error desconocido';
+      final errorMessage =
+          errorBody['message'] ?? errorBody['error'] ?? 'Error desconocido';
       throw Exception(errorMessage);
     } catch (e) {
       if (e is Exception && e.toString().contains('Exception:')) {
         rethrow;
       }
-      throw Exception('Error al obtener el perfil (Código: ${response.statusCode})');
+      throw Exception(
+        'Error al obtener el perfil (Código: ${response.statusCode})',
+      );
     }
+  }
+
+  Future<Map<String, dynamic>?> getMetaActiva(DateTime selectedDate) async {
+    final dateString = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final url = Uri.parse('$_baseUrl/metas/mi-meta-activa?fecha=$dateString');
+
+    print('ApiService: GET $url');
+    http.Response response;
+
+    try {
+      response = await http.get(
+        url,
+        headers: {..._ngrokHeaders, 'Content-Type': 'application/json'},
+      );
+    } catch (e) {
+      print('ApiService: Error de conexión: $e');
+      throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
+    }
+
+    print('ApiService: statusCode=${response.statusCode}');
+    print('ApiService: response.body=${response.body}');
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        final errorMessage = errorBody['message'] ?? 'Error desconocido';
+        throw Exception(errorMessage);
+      } catch (e) {
+        throw Exception('Error del servidor (Código: ${response.statusCode})');
+      }
+    }
+
+    // --- LÓGICA CORREGIDA PARA ACEPTAR NULL ---
+    if (response.body == 'null' || response.body.isEmpty) {
+      return null; // El backend devolvió null (no hay meta)
+    }
+    return jsonDecode(response.body);
   }
 }
