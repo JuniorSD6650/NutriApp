@@ -1,70 +1,87 @@
 // lib/core/theme/app_theme.dart
 import 'package:flutter/material.dart';
-import 'package:fe_nutriapp/core/theme/app_colors.dart'; // Importa tus colores
+import 'package:fe_nutriapp/core/theme/app_colors.dart';
 
 class AppTheme {
   
+  // --- TEMA CLARO (YA LO TENÍAS) ---
   static final ThemeData lightTheme = ThemeData(
-    // 1. Esquema de Color General
+    useMaterial3: true,
+    brightness: Brightness.light,
     colorScheme: ColorScheme.fromSeed(
       seedColor: AppColors.primary,
       background: AppColors.background,
       surface: AppColors.surface,
+      brightness: Brightness.light,
     ),
-    
-    // 2. Color de Fondo
     scaffoldBackgroundColor: AppColors.background,
-
-    // 3. Tema de la Barra Superior (AppBar)
     appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.surface, // Fondo blanco
-      elevation: 0, // Sin sombra
+      backgroundColor: AppColors.surface,
+      elevation: 0,
       centerTitle: false,
       titleTextStyle: TextStyle(
-        color: AppColors.primary, // Título en naranja
+        color: AppColors.primary, // Título naranja
         fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
       iconTheme: IconThemeData(
-        color: AppColors.textPrimary, // Iconos en gris oscuro
+        color: AppColors.textPrimary, // Iconos oscuros
       ),
     ),
-
-    // 4. Tema del Botón Flotante (El botón "+")
     floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white, // Icono de "+" en blanco
-      elevation: 4,
+      backgroundColor: AppColors.primary, // Botón naranja
+      foregroundColor: Colors.white,
     ),
-
-    // 5. Tema de la Barra de Navegación Inferior (Pestañas)
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: AppColors.surface,
-      selectedItemColor: AppColors.primary, // Icono activo en naranja
-      unselectedItemColor: AppColors.textSecondary, // Icono inactivo en gris
-      showUnselectedLabels: true, // Muestra el texto de iconos inactivos
-      elevation: 8,
+      selectedItemColor: AppColors.primary, // Pestaña naranja
+      unselectedItemColor: AppColors.textSecondary,
     ),
-
-    // 6. Tema de Texto por defecto
     textTheme: const TextTheme(
-      // Para títulos grandes (ej. "Dashboard")
-      headlineLarge: TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 28,
+      headlineLarge: TextStyle(color: AppColors.textPrimary, fontSize: 28, fontWeight: FontWeight.bold),
+      titleMedium: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w600),
+      bodyMedium: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+    ),
+  );
+
+
+  // --- TEMA OSCURO (EL NUEVO) ---
+  static final ThemeData darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.primary, // <-- Sigue usando naranja como semilla
+      background: AppColors.backgroundDark,
+      surface: AppColors.surfaceDark,
+      brightness: Brightness.dark,
+    ),
+    scaffoldBackgroundColor: AppColors.backgroundDark,
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.surfaceDark, // Fondo gris oscuro
+      elevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: AppColors.primary, // Título SIGUE SIENDO naranja
+        fontSize: 24,
         fontWeight: FontWeight.bold,
       ),
-      // Para sub-secciones (ej. "Calories")
-      titleMedium: TextStyle(
-        color: AppColors.textPrimary,
-        fontSize: 18,
-        fontWeight: FontWeight.w600,
+      iconTheme: IconThemeData(
+        color: AppColors.textPrimaryDark, // Iconos blancos
       ),
-      // Texto de cuerpo normal
-      bodyMedium: TextStyle(
-        color: AppColors.textSecondary,
-        fontSize: 14,
-      ),
+    ),
+    floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      backgroundColor: AppColors.primary, // Botón SIGUE SIENDO naranja
+      foregroundColor: Colors.white,
+    ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: AppColors.surfaceDark,
+      selectedItemColor: AppColors.primary, // Pestaña SIGUE SIENDO naranja
+      unselectedItemColor: AppColors.textSecondaryDark,
+    ),
+    textTheme: const TextTheme(
+      headlineLarge: TextStyle(color: AppColors.textPrimaryDark, fontSize: 28, fontWeight: FontWeight.bold),
+      titleMedium: TextStyle(color: AppColors.textPrimaryDark, fontSize: 18, fontWeight: FontWeight.w600),
+      bodyMedium: TextStyle(color: AppColors.textSecondaryDark, fontSize: 14),
     ),
   );
 }

@@ -25,7 +25,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _fetchSummary();
   }
 
-  // --- MÉTODO CORREGIDO ---
   Future<void> _fetchSummary() async {
     setState(() {
       _isLoading = true;
@@ -34,10 +33,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final apiService = context.read<ApiService>();
-
-      // 1. Pasa la fecha seleccionada al ApiService
       final data = await apiService.getMetaActiva(_selectedDate);
-
+      
       setState(() {
         _summaryData = data;
         _isLoading = false;
@@ -50,30 +47,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Esta función ahora sí funciona
   void _onDateSelected(DateTime newDate) {
     setState(() {
       _selectedDate = newDate;
     });
-    _fetchSummary(); // <-- Recarga los datos con la nueva fecha
+    _fetchSummary();
   }
 
   @override
   Widget build(BuildContext context) {
-    // ... (el widget build() sigue igual)
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text('SnapCalorie', style: theme.appBarTheme.titleTextStyle),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
+          IconButton(icon: const Icon(Icons.chat_bubble_outline), onPressed: () {}),
         ],
       ),
       body: _buildBody(context),
@@ -81,10 +70,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildBody(BuildContext context) {
-    // ... (el widget _buildBody() sigue igual)
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
+
     if (_errorMessage != null) {
       return Center(
         child: Padding(
@@ -97,16 +86,17 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
     }
+
     if (_summaryData == null) {
       return Column(
         children: [
-          _buildCalendar(), // Muestra el calendario
-          const Expanded(
+          _buildCalendar(),
+          Expanded(
             child: Center(
               child: Text(
                 'Sin metas registradas para este día.',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                style: TextStyle(color: Theme.of(context).textTheme.bodySmall?.color, fontSize: 16),
               ),
             ),
           ),
@@ -117,13 +107,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildDashboard(BuildContext context, Map<String, dynamic> data) {
-    // ... (el widget _buildDashboard() sigue igual)
     final theme = Theme.of(context);
     final double totalHierro = (data['hierroConsumido'] ?? 0.0).toDouble();
     final double metaHierro = (data['hierroObjetivo'] ?? 27.0).toDouble();
-    final double hierroRestante =
-        (metaHierro - totalHierro) > 0 ? (metaHierro - totalHierro) : 0.0;
-
+    final double hierroRestante = (metaHierro - totalHierro) > 0 ? (metaHierro - totalHierro) : 0.0;
+    
     final Map<String, double> hierroDataMap = {
       "Consumido": totalHierro,
       "Restante": hierroRestante,
@@ -136,7 +124,12 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           _buildCalendar(),
           const SizedBox(height: 24),
-          Text('Dashboard', style: theme.textTheme.headlineLarge),
+          Text(
+            'Dashboard', 
+            style: theme.textTheme.headlineLarge?.copyWith(
+              color: theme.textTheme.bodyLarge?.color // Asegura que el color sea visible en ambos modos
+            )
+          ),
           const SizedBox(height: 24),
           _buildProgressCard(
             context,
@@ -146,20 +139,22 @@ class _HomeScreenState extends State<HomeScreen> {
             consumed: totalHierro,
             remaining: hierroRestante,
             centerText: "${hierroRestante.toStringAsFixed(1)}\nRestante",
-            colorList: [AppColors.primary, Colors.grey[200]!],
+            colorList: [AppColors.primary, theme.colorScheme.surfaceVariant],
           ),
         ],
       ),
     );
   }
 
+  // --- WIDGET DE CALENDARIO CORREGIDO ---
   Widget _buildCalendar() {
-    // ... (el widget _buildCalendar() sigue igual)
     final List<DateTime> days = List.generate(
       7,
       (index) => DateTime.now().subtract(Duration(days: 3 - index)),
     );
     final today = DateTime.now();
+    
+    final theme = Theme.of(context);
 
     return SizedBox(
       height: 65,
@@ -168,34 +163,28 @@ class _HomeScreenState extends State<HomeScreen> {
         itemCount: days.length,
         itemBuilder: (context, index) {
           final day = days[index];
-          // Compara el día, mes y año
-          final isSelected =
-              day.day == _selectedDate.day &&
-              day.month == _selectedDate.month &&
-              day.year == _selectedDate.year;
-          // Compara solo el día, mes y año
-          final bool isToday =
-              day.day == today.day &&
-              day.month == today.month &&
-              day.year == today.year;
+          final isSelected = day.day == _selectedDate.day &&
+                             day.month == _selectedDate.month &&
+                             day.year == _selectedDate.year;
+          final bool isToday = day.day == today.day &&
+                               day.month == today.month &&
+                               day.year == today.year;
 
-          final dayName = DateFormat(
-            'E',
-            'es_ES',
-          ).format(day).substring(0, 2); // 'Lu', 'Ma'
-
+          final dayName = DateFormat('E', 'es_ES').format(day).substring(0, 2); 
+          
           return GestureDetector(
-            onTap: () => _onDateSelected(day), // <-- Esto ahora funciona
+            onTap: () => _onDateSelected(day),
             child: Container(
               width: 50,
               margin: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surface,
+                // ¡AJUSTE! Usa el color primary para seleccionado, 
+                // y el cardColor para no seleccionado (contraste sutil en oscuro)
+                color: isSelected ? AppColors.primary : theme.cardColor, 
                 borderRadius: BorderRadius.circular(12),
-                border:
-                    isToday
-                        ? Border.all(color: AppColors.primary, width: 2)
-                        : null,
+                border: isToday && !isSelected
+                    ? Border.all(color: AppColors.primary, width: 2)
+                    : null,
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -204,8 +193,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     dayName,
                     style: TextStyle(
                       fontSize: 12,
-                      color:
-                          isSelected ? Colors.white : AppColors.textSecondary,
+                      // ¡AJUSTE! Blanco para seleccionado, secundario para no seleccionado
+                      color: isSelected ? Colors.white : theme.textTheme.bodySmall?.color, 
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -214,7 +203,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: isSelected ? Colors.white : AppColors.textPrimary,
+                      // ¡AJUSTE! Blanco para seleccionado, primario (bodyLarge) para no seleccionado
+                      color: isSelected ? Colors.white : theme.textTheme.bodyLarge?.color,
                     ),
                   ),
                 ],
@@ -225,9 +215,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
+  
+  // --- WIDGET DE TARJETA DE PROGRESO CORREGIDO ---
   Widget _buildProgressCard(
-    // ... (el widget _buildProgressCard() sigue igual)
     BuildContext context, {
     required String title,
     required Map<String, double> dataMap,
@@ -239,7 +229,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     final theme = Theme.of(context);
     return Card(
-      color: AppColors.surface,
+      // ¡AJUSTE! Usa el color de la tarjeta del tema para el fondo
+      color: theme.cardColor, 
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
@@ -247,7 +238,12 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium),
+            Text(
+              title, 
+              style: theme.textTheme.titleMedium?.copyWith(
+                color: theme.textTheme.bodyLarge?.color // Asegura que el color sea visible
+              ),
+            ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -265,13 +261,15 @@ class _HomeScreenState extends State<HomeScreen> {
                         showChartValues: false,
                       ),
                       colorList: colorList,
-                      baseChartColor: Colors.grey[200]!,
+                      // ¡AJUSTE! Usa el color del fondo del scaffold para el color base del gráfico
+                      baseChartColor: theme.scaffoldBackgroundColor, 
                     ),
                     Text(
                       centerText,
                       textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        // ¡AJUSTE! Usa el color de texto primario del tema
+                        color: theme.textTheme.bodyLarge?.color, 
                         fontWeight: FontWeight.bold,
                         fontSize: 14,
                       ),
@@ -283,12 +281,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       'Meta: ${goal.toStringAsFixed(1)}',
-                      style: theme.textTheme.bodyMedium,
+                      // ¡AJUSTE! Usa el color de texto secundario del tema
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Consumido: ${consumed.toStringAsFixed(1)}',
-                      style: theme.textTheme.bodyMedium,
+                      // ¡AJUSTE! Usa el color de texto secundario del tema
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.textTheme.bodyMedium?.color
+                      ),
                     ),
                   ],
                 ),

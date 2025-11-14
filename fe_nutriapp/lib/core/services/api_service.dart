@@ -80,31 +80,44 @@ class ApiService {
   }
 
   Future<Map<String, dynamic>> getProfile() async {
+    // Nota: El _token ya fue guardado por el login
+    if (_token == null) {
+      throw Exception('No estás autenticado.');
+    }
+
     final url = Uri.parse('$_baseUrl/auth/profile');
+    print('ApiService: GET $url');
 
-    final response = await http.get(
-      url,
-      headers: {..._ngrokHeaders, 'Content-Type': 'application/json'},
-    );
+    http.Response response;
 
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      return jsonDecode(response.body);
-    }
-
-    // Manejo de errores similar
     try {
-      final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-      final errorMessage =
-          errorBody['message'] ?? errorBody['error'] ?? 'Error desconocido';
-      throw Exception(errorMessage);
-    } catch (e) {
-      if (e is Exception && e.toString().contains('Exception:')) {
-        rethrow;
-      }
-      throw Exception(
-        'Error al obtener el perfil (Código: ${response.statusCode})',
+      response = await http.get(
+        url,
+        headers: {
+          ..._ngrokHeaders, // Headers de Ngrok
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token', // <-- Envía el token
+        },
       );
+    } catch (e) {
+      print('ApiService: Error de conexión: $e');
+      throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
+
+    print('ApiService: statusCode=${response.statusCode}');
+    print('ApiService: response.body=${response.body}');
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        final errorMessage = errorBody['message'] ?? 'Error desconocido';
+        throw Exception(errorMessage);
+      } catch (e) {
+        throw Exception('Error del servidor (Código: ${response.statusCode})');
+      }
+    }
+
+    return jsonDecode(response.body);
   }
 
   Future<Map<String, dynamic>?> getMetaActiva(DateTime selectedDate) async {
