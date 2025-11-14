@@ -16,6 +16,11 @@ class _LoginScreenState extends State<LoginScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
+  // --- AÑADIDO ---
+  // 1. Variable de estado para controlar la visibilidad
+  bool _isPasswordObscured = true;
+  // --- FIN DE AÑADIDO ---
+
   Future<void> _submitLogin() async {
     final email = _emailController.text;
     final password = _passwordController.text;
@@ -94,14 +99,32 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             const SizedBox(height: 16),
+
+            // --- WIDGET DE CONTRASEÑA MODIFICADO ---
             TextField(
               controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(
+              // 2. Usa la variable de estado aquí
+              obscureText: _isPasswordObscured, 
+              decoration: InputDecoration(
                 labelText: 'Contraseña',
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
+                // 3. Añade el icono (el "ojito")
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    // Cambia el icono basado en el estado
+                    _isPasswordObscured ? Icons.visibility_off : Icons.visibility,
+                  ),
+                  onPressed: () {
+                    // 4. Actualiza el estado al presionar el botón
+                    setState(() {
+                      _isPasswordObscured = !_isPasswordObscured;
+                    });
+                  },
+                ),
               ),
             ),
+            // --- FIN DE LA MODIFICACIÓN ---
+
             const SizedBox(height: 24),
             if (_isLoading)
               const Center(child: CircularProgressIndicator())
