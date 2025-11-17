@@ -7,12 +7,17 @@ import 'package:fe_nutriapp/core/services/auth_service.dart';
 import 'package:fe_nutriapp/features/auth/login_screen.dart';
 import 'package:fe_nutriapp/features/navigation/role_dispatcher_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
-import 'package:fe_nutriapp/core/theme/theme_provider.dart'; // <-- ¡LA IMPORTACIÓN ESTÁ AQUÍ!
+import 'package:fe_nutriapp/core/theme/theme_provider.dart';
+import 'package:fe_nutriapp/core/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('es_ES', null);
-  
+
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  await notificationService.requestPermissions();
+
   final apiService = ApiService();
   runApp(
     MultiProvider(
@@ -21,8 +26,12 @@ void main() async {
         ChangeNotifierProvider<AuthService>(
           create: (context) => AuthService(context.read<ApiService>()),
         ),
-        ChangeNotifierProvider<ThemeProvider>( // <-- Esta línea ahora es válida
+        ChangeNotifierProvider<ThemeProvider>(
+          // <-- Esta línea ahora es válida
           create: (_) => ThemeProvider(),
+        ),
+        Provider<NotificationService>(
+          create: (_) => notificationService,
         ),
       ],
       child: const MyApp(),
@@ -41,16 +50,16 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<ThemeProvider>( // <-- Esta línea ahora es válida
+    return Consumer<ThemeProvider>(
+      // <-- Esta línea ahora es válida
       builder: (context, themeProvider, child) {
-        
         return MaterialApp(
           title: 'NutriApp',
           debugShowCheckedModeBanner: false,
-          
+
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme, // (Asumiendo que lo tienes)
-          
+
           themeMode: themeProvider.themeMode, // <-- Esta línea ahora es válida
 
           home: FutureBuilder(
@@ -74,7 +83,7 @@ class _MyAppState extends State<MyApp> {
             },
           ),
         );
-      }
+      },
     );
   }
 }
