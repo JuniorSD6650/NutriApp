@@ -2,15 +2,20 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:intl/intl.dart';
+import 'dart:ui'; // Para VoidCallback
 
 class ApiService {
+  
   final Map<String, String> _ngrokHeaders = {
     'ngrok-skip-browser-warning': 'true',
   };
 
-  final String _baseUrl = "https://72947d158411.ngrok-free.app";
+  final String _baseUrl = "https://1a9c40d96818.ngrok-free.app"; // Tu URL
 
   String? _token;
+  
+  // 1. AÑADIDO: "Botón de emergencia" que el AuthService "conectará"
+  VoidCallback? onTokenExpired; 
 
   void setToken(String? token) {
     _token = token;
@@ -21,15 +26,56 @@ class ApiService {
     }
   }
 
+  // --- 2. NUEVO HELPER CENTRALIZADO PARA PROCESAR RESPUESTAS ---
+  dynamic _processResponse(http.Response response) {
+    print('ApiService: statusCode=${response.statusCode}');
+    print('ApiService: response.body=${response.body}');
+
+    // 3. ¡AQUÍ ESTÁ LA MAGIA!
+    // Si el token expiró (401), llama al callback de logout
+    if (response.statusCode == 401) {
+      print('ApiService: 401 Detectado. Ejecutando logout automático.');
+      onTokenExpired?.call(); // Esto llamará a AuthService.logout()
+      throw Exception('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+    }
+
+    // Si es cualquier otro error (400, 404, 500...)
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        
+        // Manejo de errores de NestJS (string o array)
+        final dynamic messageField = errorBody['message'];
+        String errorMessage;
+        if (messageField is String) {
+          errorMessage = messageField;
+        } else if (messageField is List && messageField.isNotEmpty) {
+          errorMessage = messageField.first.toString();
+        } else {
+          errorMessage = errorBody['error'] ?? 'Error desconocido';
+        }
+        
+        throw Exception(errorMessage);
+      } catch (e) {
+        if (e.toString().contains('Exception:')) rethrow; // Re-lanza la excepción que ya formateamos
+        throw Exception('Error del servidor (Código: ${response.statusCode})');
+      }
+    }
+    
+    // Si la respuesta es exitosa pero nula (como en metas)
+    if (response.body == 'null' || response.body.isEmpty) {
+      return null;
+    }
+
+    // Si la respuesta es exitosa y tiene JSON
+    return jsonDecode(response.body);
+  }
+
+  // --- LOGIN (Maneja el 401 de forma DIFERENTE) ---
   Future<Map<String, dynamic>> login(String email, String password) async {
     final url = Uri.parse('$_baseUrl/auth/login');
-
-    print('ApiService: POST $url');
-    print('ApiService: body: email=$email, password=$password');
-
     http.Response response;
 
-    // 1. Manejo de errores de conexión
     try {
       response = await http.post(
         url,
@@ -41,62 +87,36 @@ class ApiService {
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
-    print('ApiService: statusCode=${response.statusCode}');
-    print('ApiService: response.body=${response.body}');
-
-    // 2. Verificar si la respuesta fue exitosa
-    if (response.statusCode >= 200 && response.statusCode < 300) {
-      // Éxito - decodificar y retornar
-      return jsonDecode(response.body);
+    // 401 en LOGIN significa "Credenciales incorrectas", NO "Token expirado"
+    if (response.statusCode == 401) {
+      // Intenta leer el mensaje de error de NestJS
+      try {
+         final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+         throw Exception(errorBody['message'] ?? 'Credenciales incorrectas');
+      } catch (e) {
+        throw Exception('Credenciales incorrectas');
+      }
     }
 
-    // 3. Manejo de errores del servidor (4xx, 5xx)
-    try {
-      final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-
-      // NestJS puede devolver 'message' como String o como Array
-      final dynamic messageField = errorBody['message'];
-      String errorMessage;
-
-      if (messageField is String) {
-        errorMessage = messageField;
-      } else if (messageField is List && messageField.isNotEmpty) {
-        // Si es un array de errores de validación, toma el primero
-        errorMessage = messageField.first.toString();
-      } else {
-        errorMessage = errorBody['error'] ?? 'Error desconocido';
-      }
-
-      print('ApiService: Error del servidor: $errorMessage');
-      throw Exception(errorMessage);
-    } catch (e) {
-      // Si no se puede decodificar el JSON
-      if (e is Exception && e.toString().contains('Exception:')) {
-        rethrow; // Re-lanza la excepción que ya formateamos
-      }
-      print('ApiService: Error al decodificar respuesta de error: $e');
-      throw Exception('Error del servidor (Código: ${response.statusCode})');
-    }
+    // Pasa al helper para manejar el éxito (200) u otros errores (500)
+    return _processResponse(response);
   }
 
+  // --- GET PROFILE (Usa el helper) ---
   Future<Map<String, dynamic>> getProfile() async {
-    // Nota: El _token ya fue guardado por el login
-    if (_token == null) {
-      throw Exception('No estás autenticado.');
-    }
-
+    if (_token == null) throw Exception('No estás autenticado.');
+    
     final url = Uri.parse('$_baseUrl/auth/profile');
     print('ApiService: GET $url');
-
     http.Response response;
 
     try {
       response = await http.get(
         url,
         headers: {
-          ..._ngrokHeaders, // Headers de Ngrok
+          ..._ngrokHeaders,
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $_token', // <-- Envía el token
+          'Authorization': 'Bearer $_token',
         },
       );
     } catch (e) {
@@ -104,26 +124,14 @@ class ApiService {
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
-    print('ApiService: statusCode=${response.statusCode}');
-    print('ApiService: response.body=${response.body}');
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      try {
-        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        final errorMessage = errorBody['message'] ?? 'Error desconocido';
-        throw Exception(errorMessage);
-      } catch (e) {
-        throw Exception('Error del servidor (Código: ${response.statusCode})');
-      }
-    }
-
-    return jsonDecode(response.body);
+    // Pasa la respuesta al helper para que maneje 401, 200, etc.
+    return _processResponse(response);
   }
 
+  // --- GET META ACTIVA (Usa el helper) ---
   Future<Map<String, dynamic>?> getMetaActiva(DateTime selectedDate) async {
     final dateString = DateFormat('yyyy-MM-dd').format(selectedDate);
     final url = Uri.parse('$_baseUrl/metas/mi-meta-activa?fecha=$dateString');
-
     print('ApiService: GET $url');
     http.Response response;
 
@@ -137,23 +145,7 @@ class ApiService {
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
-    print('ApiService: statusCode=${response.statusCode}');
-    print('ApiService: response.body=${response.body}');
-
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      try {
-        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        final errorMessage = errorBody['message'] ?? 'Error desconocido';
-        throw Exception(errorMessage);
-      } catch (e) {
-        throw Exception('Error del servidor (Código: ${response.statusCode})');
-      }
-    }
-
-    // --- LÓGICA CORREGIDA PARA ACEPTAR NULL ---
-    if (response.body == 'null' || response.body.isEmpty) {
-      return null; // El backend devolvió null (no hay meta)
-    }
-    return jsonDecode(response.body);
+    // Pasa la respuesta al helper para que maneje 401, 200, null, etc.
+    return _processResponse(response);
   }
 }

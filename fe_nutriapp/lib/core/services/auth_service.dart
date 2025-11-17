@@ -10,15 +10,24 @@ class AuthService with ChangeNotifier {
 
   String? _token;
   String? _role;
-  String? _userEmail; // <-- AÑADIDO: Para guardar el email
+  String? _userEmail;
   bool _isLoggedIn = false;
   
   bool get isLoggedIn => _isLoggedIn;
   String? get token => _token;
   String? get userRole => _role;
-  String? get userEmail => _userEmail; // <-- AÑADIDO: Getter para el email
+  String? get userEmail => _userEmail;
 
-  AuthService(this._apiService);
+  // --- ¡CAMBIO CLAVE AQUÍ! ---
+  AuthService(this._apiService) {
+    // Le dice al ApiService: "Si alguna vez recibes un 401,
+    // ejecuta mi función logout()."
+    _apiService.onTokenExpired = () {
+      print("AuthService: onTokenExpired detectado, cerrando sesión.");
+      logout();
+    };
+  }
+  // --------------------------
 
   // Función para guardar el token, rol Y email
   Future<void> _processToken(String token) async {
@@ -26,48 +35,55 @@ class AuthService with ChangeNotifier {
     
     _token = token;
     _role = payload['role'];
-    _userEmail = payload['email']; // <-- AÑADIDO: Extrae el email del token
+    _userEmail = payload['email'];
     _isLoggedIn = true;
     _apiService.setToken(_token);
 
-    // Guarda todo en el almacenamiento seguro
     await _storage.write(key: 'jwt_token', value: _token);
     await _storage.write(key: 'user_role', value: _role);
-    await _storage.write(key: 'user_email', value: _userEmail); // <-- AÑADIDO
+    await _storage.write(key: 'user_email', value: _userEmail);
   }
 
   Future<void> tryAutoLogin() async {
     _token = await _storage.read(key: 'jwt_token');
     _role = await _storage.read(key: 'user_role');
-    _userEmail = await _storage.read(key: 'user_email'); // <-- AÑADIDO: Carga el email
+    _userEmail = await _storage.read(key: 'user_email');
     
-    if (_token != null && _role != null && _userEmail != null) { // <-- AÑADIDO: Verifica el email
+    if (_token != null && _role != null && _userEmail != null) {
       _isLoggedIn = true;
       _apiService.setToken(_token);
-      notifyListeners();
+      // No notificamos aquí, esperamos a que el FutureBuilder termine
+      // y la primera llamada a la API (ej. getMetaActiva) valide el token.
     }
+    // Si el token es nulo, _isLoggedIn sigue en false
   }
 
   Future<void> login(String email, String password) async {
     try {
       final response = await _apiService.login(email, password);
       await _processToken(response['access_token']);
-      notifyListeners();
+      notifyListeners(); // Avisa a la UI (main.dart) que el estado cambió
     } catch (e) {
-      rethrow;
+      rethrow; // Pasa el error (ej. "Credenciales incorrectas") a la UI
     }
   }
 
   Future<void> logout() async {
+    // Evitar bucles infinitos si ya se llamó
+    if (!_isLoggedIn && _token == null) return; 
+
+    print("AuthService: Ejecutando logout...");
     _token = null;
     _role = null;
-    _userEmail = null; // <-- AÑADIDO: Limpia el email
+    _userEmail = null;
     _isLoggedIn = false;
+    
     await _storage.delete(key: 'jwt_token');
     await _storage.delete(key: 'user_role');
-    await _storage.delete(key: 'user_email'); // <-- AÑADIDO: Borra el email
+    await _storage.delete(key: 'user_email');
+    
     _apiService.setToken(null);
     
-    notifyListeners();
+    notifyListeners(); // Avisa a la UI (main.dart) que debe ir al Login
   }
 }
