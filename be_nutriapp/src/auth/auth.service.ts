@@ -1,11 +1,13 @@
 // src/auth/auth.service.ts
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entities/refresh-token.entity';
+import * as bcrypt from 'bcrypt';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Injectable()
 export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
@@ -88,5 +90,24 @@ export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
       await this.refreshTokenRepository.save(tokenEntity);
     }
     return { message: 'Sesión cerrada (refresh token revocado si aplica)' };
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.usersService.findOne(userId);
+    if (!user || !user.password) {
+        throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+        throw new BadRequestException('La contraseña actual es incorrecta');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await this.usersService.update(userId, { password: hashedPassword });
+
+    return { message: 'Contraseña cambiada exitosamente' };
   }
 }

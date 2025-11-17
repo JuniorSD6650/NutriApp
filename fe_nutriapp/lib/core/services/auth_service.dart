@@ -86,4 +86,14 @@ class AuthService with ChangeNotifier {
     
     notifyListeners(); // Avisa a la UI (main.dart) que debe ir al Login
   }
+
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    await _apiService.changePassword(
+      currentPassword: currentPassword,
+      newPassword: newPassword,
+    );
+  }
 }

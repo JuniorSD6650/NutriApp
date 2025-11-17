@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:fe_nutriapp/features/profile/screens/privacy_policy_screen.dart';
+import 'package:fe_nutriapp/features/profile/screens/change_password_screen.dart'; // <-- Nueva importación
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/theme/theme_provider.dart'; // <-- ¡LA IMPORTACIÓN ESTÁ AQUÍ!
@@ -66,13 +67,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           
           _buildSectionTitle(context, 'Cuenta'),
           ListTile(
-            leading: Icon(Icons.lock_outline, color: AppColors.textPrimary), // <-- AppColors está bien aquí
+            leading: Icon(Icons.lock_outline, color: AppColors.textPrimary),
             title: Text('Cambiar contraseña', style: theme.textTheme.titleMedium),
-            // --- CORRECCIÓN: Quitado el 'const' ---
             trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('TODO: Pantalla de cambiar contraseña'))
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ChangePasswordScreen()),
               );
             },
           ),

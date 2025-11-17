@@ -148,4 +148,35 @@ class ApiService {
     // Pasa la respuesta al helper para que maneje 401, 200, null, etc.
     return _processResponse(response);
   }
+
+  // --- CAMBIAR CONTRASEÑA ---
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    if (_token == null) throw Exception('No estás autenticado.');
+
+    final url = Uri.parse('$_baseUrl/auth/change-password');
+    http.Response response;
+
+    try {
+      response = await http.patch(
+        url,
+        headers: {
+          ..._ngrokHeaders,
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+        body: jsonEncode({
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        }),
+      );
+    } catch (e) {
+      print('ApiService: Error de conexión: $e');
+      throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
+    }
+
+    _processResponse(response); // Lanza excepción si hay error, no retorna nada si éxito
+  }
 }

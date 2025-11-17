@@ -1,10 +1,11 @@
 // src/auth/auth.controller.ts
-import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Request } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, UseGuards, Get, Request, Patch, UsePipes, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from './decorators/roles.decorator';
 import { Role } from '../users/enums/role.enum';
 import { RolesGuard } from './guards/roles.guard';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -54,6 +55,16 @@ export class AuthController {
         return profile
             ? { ...safeUser, profile }
             : { ...safeUser, profile: null };
+    }
+
+    @UseGuards(AuthGuard('jwt'))
+    @Patch('change-password')
+    @UsePipes(new ValidationPipe({ whitelist: true }))
+    async changePassword(
+        @Request() req,
+        @Body() body: ChangePasswordDto
+    ) {
+        return this.authService.changePassword(req.user.sub, body.currentPassword, body.newPassword);
     }
 
 }
