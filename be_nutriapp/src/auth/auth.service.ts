@@ -8,9 +8,10 @@ import { ConfigService } from '@nestjs/config';
 import { RefreshToken } from './entities/refresh-token.entity';
 import * as bcrypt from 'bcrypt';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { Role } from '../users/enums/role.enum'; // <-- AÑADIR IMPORT
 
 @Injectable()
-export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
+export class AuthService {
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -18,10 +19,6 @@ export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
     @InjectRepository(RefreshToken)
     private refreshTokenRepository: Repository<RefreshToken>,
   ) { }
-
-  async getUserWithProfiles(id: string) {
-    return this.usersService.findOneWithProfiles(id);
-  }
 
   async signIn(email: string, pass: string) {
     // Validación básica
@@ -109,5 +106,54 @@ export class AuthService { // <-- ¡ASEGÚRATE DE QUE "EXPORT" ESTÉ AQUÍ!
     await this.usersService.update(userId, { password: hashedPassword });
 
     return { message: 'Contraseña cambiada exitosamente' };
+  }
+
+  async getUserWithProfiles(userId: string) {
+    const user = await this.usersService.findOne(userId);
+    
+    // VALIDACIÓN: Si el usuario no existe (por ejemplo, se borró la DB)
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado. Token inválido.');
+    }
+
+    // Si es paciente, incluir su perfil
+    if (user.role === Role.PACIENTE && user.pacienteProfile) {
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        pacienteProfile: {
+          fecha_nacimiento: user.pacienteProfile.fecha_nacimiento,
+          peso_inicial_kg: user.pacienteProfile.peso_inicial_kg,
+          altura_cm: user.pacienteProfile.altura_cm,
+          alergias_alimentarias: user.pacienteProfile.alergias_alimentarias,
+          toma_suplementos_hierro: user.pacienteProfile.toma_suplementos_hierro,
+        },
+      };
+    }
+
+    // Si es médico, incluir su perfil
+    if (user.role === Role.MEDICO && user.medicoProfile) {
+      return {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        medicoProfile: {
+          especialidad: user.medicoProfile.especialidad,
+          numero_colegiado: user.medicoProfile.numero_colegiado,
+          biografia: user.medicoProfile.biografia,
+        },
+      };
+    }
+
+    // Si es admin o no tiene perfil, solo datos básicos
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    };
   }
 }

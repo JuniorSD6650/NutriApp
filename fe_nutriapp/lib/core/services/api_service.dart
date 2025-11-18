@@ -31,20 +31,15 @@ class ApiService {
     print('ApiService: statusCode=${response.statusCode}');
     print('ApiService: response.body=${response.body}');
 
-    // 3. ¡AQUÍ ESTÁ LA MAGIA!
-    // Si el token expiró (401), llama al callback de logout
     if (response.statusCode == 401) {
       print('ApiService: 401 Detectado. Ejecutando logout automático.');
-      onTokenExpired?.call(); // Esto llamará a AuthService.logout()
+      onTokenExpired?.call();
       throw Exception('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
     }
 
-    // Si es cualquier otro error (400, 404, 500...)
     if (response.statusCode < 200 || response.statusCode >= 300) {
       try {
         final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
-        
-        // Manejo de errores de NestJS (string o array)
         final dynamic messageField = errorBody['message'];
         String errorMessage;
         if (messageField is String) {
@@ -54,16 +49,22 @@ class ApiService {
         } else {
           errorMessage = errorBody['error'] ?? 'Error desconocido';
         }
-        
         throw Exception(errorMessage);
       } catch (e) {
-        if (e.toString().contains('Exception:')) rethrow; // Re-lanza la excepción que ya formateamos
+        if (e.toString().contains('Exception:')) rethrow;
         throw Exception('Error del servidor (Código: ${response.statusCode})');
       }
     }
     
+    // NUEVO: Validar que el body no esté vacío en respuestas 200
+    if (response.body.isEmpty || response.body.trim() == '') {
+      print('ApiService: Body vacío detectado con statusCode 200. Token probablemente inválido.');
+      onTokenExpired?.call(); // Forzar logout
+      throw Exception('Sesión inválida. Por favor, inicia sesión nuevamente.');
+    }
+
     // Si la respuesta es exitosa pero nula (como en metas)
-    if (response.body == 'null' || response.body.isEmpty) {
+    if (response.body == 'null') {
       return null;
     }
 
@@ -147,6 +148,50 @@ class ApiService {
 
     // Pasa la respuesta al helper para que maneje 401, 200, null, etc.
     return _processResponse(response);
+  }
+
+  // --- NUEVO: Obtener resumen diario detallado
+  Future<Map<String, dynamic>> getResumenDiario(DateTime selectedDate) async {
+    if (_token == null) throw Exception('No estás autenticado.');
+    
+    final dateString = DateFormat('yyyy-MM-dd').format(selectedDate);
+    final url = Uri.parse('$_baseUrl/registros/resumen-dia?fecha=$dateString');
+    print('ApiService: GET $url');
+    http.Response response;
+
+    try {
+      response = await http.get(
+        url,
+        headers: {
+          ..._ngrokHeaders,
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+    } catch (e) {
+      print('ApiService: Error de conexión: $e');
+      throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
+    }
+
+    final result = _processResponse(response);
+    
+    // VALIDACIÓN: Si result es null, retornar estructura por defecto
+    if (result == null) {
+      return {
+        'fecha': dateString,
+        'totalRegistros': 0,
+        'totalHierro': 0.0,
+        'totalCalorias': 0.0,
+        'registrosPorTipo': {
+          'desayuno': [],
+          'almuerzo': [],
+          'cena': [],
+          'snack': [],
+        },
+      };
+    }
+
+    return result as Map<String, dynamic>;
   }
 
   // --- CAMBIAR CONTRASEÑA ---

@@ -26,8 +26,9 @@ async function bootstrap() {
 
   try {
     const usersService = app.get(UsersService);
-    // 1. Insertar médicos y guardar email->id
     const medicoEmailToId = {};
+    
+    // 1. Insertar médicos y guardar email->id
     for (const userData of usersSeed.filter(u => u.role === 'medico')) {
       const exists = await usersService.findOneByEmail(userData.email);
       let medico;
@@ -120,24 +121,24 @@ async function bootstrap() {
       console.log(`✓ Perfil de médico para ${profileData.userEmail} creado.`);
     }
 
+    // ORDEN CORRECTO (verificar que esté así):
+    console.log('1. Sembrando nutrientes...');
     const nutrientesService = app.get(NutrientesService);
     for (const nutrienteData of nutrientesSeed) {
       try {
         await nutrientesService.create(nutrienteData);
         console.log(`✓ Nutriente '${nutrienteData.name}' creado.`);
       } catch (e) {
-        if (e.code === 'ER_DUP_ENTRY' || e.code === '23505' || (e.message && e.message.includes('ya existe'))) {
+        if (e.code === 'ER_DUP_ENTRY' || e.code === '23505') {
           console.log(`El nutriente '${nutrienteData.name}' ya existe. Omitiendo.`);
         } else {
           throw e;
         }
       }
     }
-    console.log('Nutrientes maestros listos.');
 
-    // --- 5. Sembrado de Ingredientes ---
+    console.log('2. Sembrando ingredientes con sus nutrientes...');
     const ingredientesService = app.get(IngredientesService);
-    // Obtener todos los nutrientes para mapear nombre->id
     const allNutrientes = await nutrientesService.findAll({ page: 1, limit: 100, estado: FiltroEstado.ACTIVO });
     const nutrientesMap = {};
     for (const n of allNutrientes.data) {
@@ -145,7 +146,6 @@ async function bootstrap() {
     }
 
     for (const ingredienteData of ingredientesSeed) {
-      // Buscar si ya existe
       try {
         await ingredientesService.create({
           name: ingredienteData.name,
@@ -158,22 +158,28 @@ async function bootstrap() {
         });
         console.log(`✓ Ingrediente '${ingredienteData.name}' creado.`);
       } catch (e) {
-        if (e.code === 'ER_DUP_ENTRY' || e.code === '23505' || (e.message && e.message.includes('ya existe'))) {
+        if (e.code === 'ER_DUP_ENTRY' || e.code === '23505') {
           console.log(`El ingrediente '${ingredienteData.name}' ya existe. Omitiendo.`);
         } else {
           throw e;
         }
       }
     }
-    console.log('Ingredientes y relaciones sembrados.');
 
-    // --- 6. Sembrado de Platillos ---
+    console.log('3. Sembrando platillos...');
     const dataSource = app.get(DataSource);
-  await platillosSeed(dataSource);
-  await platilloIngredientesSeed(dataSource);
-  await metasSeed(dataSource);
-  await registrosSeed(dataSource); // <-- AHORA DEPENDE DE PLATILLOS
-  console.log('Platillos, ingredientes de platillo, metas y registros sembrados.');
+    await platillosSeed(dataSource);
+
+    console.log('4. Relacionando platillos con ingredientes...');
+    await platilloIngredientesSeed(dataSource);
+
+    console.log('5. Sembrando registros de consumo...');
+    await registrosSeed(dataSource);
+
+    console.log('6. Sembrando metas (calculando hierro consumido)...');
+    await metasSeed(dataSource);
+    console.log('Platillos, ingredientes de platillo, metas y registros sembrados.');
+    
   } catch (error) {
     console.error('Error durante el sembrado:', error);
   } finally {

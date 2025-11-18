@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { ProfilesService } from '../profiles/profiles.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, Between, IsNull } from 'typeorm';
 import { RegistroConsumo } from './entities/registro-consumo.entity';
 import { CreateRegistroConsumoDto } from './dto/create-registro-consumo.dto';
 import { QueryRegistroConsumoDto } from './dto/query-registro-consumo.dto';
@@ -58,17 +58,118 @@ export class RegistrosService {
   }
 
   // GET /registros/resumen-dia (para paciente autenticada)
-  async resumenDia(userId: string, fecha: string) {
-    // Sumar calorías, hierro, etc. Aquí solo ejemplo de conteo de registros
-    const fechaDate = new Date(fecha);
+  async resumenDia(userId: string, fecha?: string) {
+    const fechaStr = fecha || new Date().toISOString().split('T')[0];
+    const startOfDay = new Date(`${fechaStr}T00:00:00.000Z`);
+    const endOfDay = new Date(`${fechaStr}T23:59:59.999Z`);
+
+    console.log('🔍 Consultando registros para userId:', userId);
+    console.log('📅 Fecha:', fechaStr);
+
     const registros = await this.registroConsumoRepository.find({
-      where: { usuario: { id: userId }, fecha: fechaDate, deletedAt: IsNull() },
+      where: { 
+        usuario: { id: userId }, 
+        fecha: Between(startOfDay, endOfDay),
+        deletedAt: IsNull() 
+      },
+      relations: [
+        'platillo',
+        'platillo.ingredientes',
+        'platillo.ingredientes.ingrediente',
+        'platillo.ingredientes.ingrediente.nutrientes',
+        'platillo.ingredientes.ingrediente.nutrientes.nutriente'
+      ],
+      order: { fecha: 'ASC' },
     });
-    // Aquí deberías sumar los nutrientes, por ahora solo cuenta
+
+    console.log('📊 Registros encontrados:', registros.length);
+    
+    // AÑADIR DEBUGGING DETALLADO
+    for (const registro of registros) {
+      console.log('🍽️ Platillo:', registro.platillo?.nombre);
+      console.log('  - Ingredientes:', registro.platillo?.ingredientes?.length || 0);
+      
+      if (registro.platillo?.ingredientes) {
+        for (const pi of registro.platillo.ingredientes) {
+          console.log(`    • ${pi.ingrediente?.name}: ${pi.cantidad}g`);
+          console.log(`      Nutrientes: ${pi.ingrediente?.nutrientes?.length || 0}`);
+          
+          if (pi.ingrediente?.nutrientes) {
+            for (const inNut of pi.ingrediente.nutrientes) {
+              console.log(`        - ${inNut.nutriente?.name}: ${inNut.value_per_100g}/100g`);
+            }
+          }
+        }
+      }
+    }
+
+    let totalHierro = 0;
+
+    type RegistroDetalle = {
+      id: string;
+      nombre: string;
+      porciones: number;
+      hierro: number;
+      foto: string | undefined;
+      descripcion: string | undefined;
+      hora: string;
+    };
+
+    const registrosPorTipo: Record<string, RegistroDetalle[]> = {
+      desayuno: [],
+      almuerzo: [],
+      cena: [],
+      snack: [],
+    };
+
+    for (const registro of registros) {
+      let hierroRegistro = 0;
+
+      if (registro.platillo && registro.platillo.ingredientes) {
+        for (const platilloIngrediente of registro.platillo.ingredientes) {
+          const cantidadEnGramos = platilloIngrediente.cantidad * registro.porciones;
+
+          // AÑADIR LOG AQUÍ
+          console.log(`Procesando: ${platilloIngrediente.ingrediente?.name} - ${cantidadEnGramos}g`);
+
+          if (platilloIngrediente.ingrediente?.nutrientes) {
+            for (const ingredienteNutriente of platilloIngrediente.ingrediente.nutrientes) {
+              const nutriente = ingredienteNutriente.nutriente;
+              const valorPor100g = ingredienteNutriente.value_per_100g;
+              const valorTotal = (valorPor100g * cantidadEnGramos) / 100;
+
+              console.log(`  → Nutriente: ${nutriente?.name}, Valor: ${valorPor100g}/100g, Total: ${valorTotal}`);
+
+              if (nutriente && nutriente.name.toLowerCase().includes('hierro')) {
+                hierroRegistro += valorTotal;
+                totalHierro += valorTotal;
+                console.log(`    ✅ HIERRO DETECTADO: +${valorTotal}mg`);
+              }
+            }
+          } else {
+            console.log(`  ⚠️ Sin nutrientes para ${platilloIngrediente.ingrediente?.name}`);
+          }
+        }
+      }
+
+      registrosPorTipo[registro.tipo_comida].push({
+        id: registro.id,
+        nombre: registro.platillo?.nombre || registro.descripcion || 'Sin nombre',
+        porciones: registro.porciones,
+        hierro: Math.round(hierroRegistro * 100) / 100,
+        foto: registro.foto,
+        descripcion: registro.descripcion,
+        hora: registro.fecha.toISOString(),
+      });
+    }
+
+    console.log('🎯 TOTAL HIERRO CALCULADO:', totalHierro);
+
     return {
+      fecha: fechaStr,
       totalRegistros: registros.length,
-      // totalHierro: ...
-      // totalCalorias: ...
+      totalHierro: Math.round(totalHierro * 100) / 100,
+      registrosPorTipo,
     };
   }
   /**

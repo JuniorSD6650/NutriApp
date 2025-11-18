@@ -12,7 +12,7 @@ export class Platillo {
   @Column({ type: 'text', nullable: true })
   descripcion?: string;
 
-  @OneToMany(() => PlatilloIngrediente, (pi) => pi.platillo, { cascade: true })
+  @OneToMany(() => PlatilloIngrediente, (pi) => pi.platillo, { cascade: true, eager: true })
   ingredientes: PlatilloIngrediente[];
 
   @CreateDateColumn()

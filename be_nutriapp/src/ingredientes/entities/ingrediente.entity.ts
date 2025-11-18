@@ -20,11 +20,11 @@ export class Ingrediente {
   @OneToMany(
     () => IngredienteNutriente,
     (ingredienteNutriente) => ingredienteNutriente.ingrediente,
-    { cascade: true }
+    { cascade: true, eager: true } // <-- AÑADIR eager: true
   )
   nutrientes: IngredienteNutriente[];
 
-  @CreateDateColumn() // <-- AÑADIR (Para ordenar)
+  @CreateDateColumn()
   createdAt: Date;
 
   @DeleteDateColumn()
