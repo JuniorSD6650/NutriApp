@@ -1,8 +1,8 @@
 class MealTime {
-  final String id; // Para identificar cada notificación única
+  final String id;
   final int hour;
   final int minute;
-  final String label; // "Desayuno", "Almuerzo", etc.
+  final String label;
 
   MealTime({
     required this.id,
@@ -17,7 +17,6 @@ class MealTime {
     return '$h:$m';
   }
 
-  // Para guardar/cargar de SharedPreferences
   Map<String, dynamic> toJson() => {
     'id': id,
     'hour': hour,

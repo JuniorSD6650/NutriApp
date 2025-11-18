@@ -71,13 +71,11 @@ class NotificationService {
 
   // Programar múltiples notificaciones
   Future<void> scheduleMultipleMealReminders(List<MealTime> mealTimes) async {
-    // Primero cancelar todas las anteriores
     await _notifications.cancelAll();
     
-    // Programar cada una
     for (final mealTime in mealTimes) {
       final scheduledTime = _nextInstanceOfTime(mealTime.hour, mealTime.minute);
-      final notificationId = mealTime.id.hashCode; // ID único basado en el ID del meal
+      final notificationId = mealTime.id.hashCode;
       
       print('📅 Programando ${mealTime.label} a las ${mealTime.timeString}');
       
@@ -98,7 +96,7 @@ class NotificationService {
           ),
         ),
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.time, // Repetir diariamente
+        matchDateTimeComponents: DateTimeComponents.time,
       );
     }
     

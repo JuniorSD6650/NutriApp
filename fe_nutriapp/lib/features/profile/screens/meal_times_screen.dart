@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:fe_nutriapp/core/models/meal_time.dart';
-import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -32,7 +31,6 @@ class _MealTimesScreenState extends State<MealTimesScreen> {
         _mealTimes = jsonList.map((json) => MealTime.fromJson(json)).toList();
       });
     } else {
-      // Valores por defecto
       setState(() {
         _mealTimes = [
           MealTime(id: '1', hour: 7, minute: 0, label: 'Desayuno'),
@@ -48,7 +46,7 @@ class _MealTimesScreenState extends State<MealTimesScreen> {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = jsonEncode(_mealTimes.map((m) => m.toJson()).toList());
     await prefs.setString('meal_times', jsonString);
-    widget.onSave(_mealTimes); // Notificar a la pantalla de Settings
+    widget.onSave(_mealTimes);
   }
 
   Future<void> _editMealTime(int index) async {
@@ -85,9 +83,7 @@ class _MealTimesScreenState extends State<MealTimesScreen> {
           title: const Text('Nombre de la comida'),
           content: TextField(
             controller: labelController,
-            decoration: const InputDecoration(
-              hintText: 'Ej: Merienda',
-            ),
+            decoration: const InputDecoration(hintText: 'Ej: Merienda'),
           ),
           actions: [
             TextButton(
@@ -127,9 +123,7 @@ class _MealTimesScreenState extends State<MealTimesScreen> {
     final theme = Theme.of(context);
     
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Horarios de Comida'),
-      ),
+      appBar: AppBar(title: const Text('Horarios de Comida')),
       body: ListView.builder(
         itemCount: _mealTimes.length,
         itemBuilder: (context, index) {
