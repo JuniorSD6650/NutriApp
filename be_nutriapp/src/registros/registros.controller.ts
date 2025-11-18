@@ -29,13 +29,12 @@ export class RegistrosController {
   @Roles(Role.PACIENTE)
   @UseInterceptors(FileInterceptor('foto'))
   async create(
-    @UploadedFile() foto: Express.Multer.File,
+    @UploadedFile() foto: Express.Multer.File | undefined, // <-- AHORA ES OPCIONAL
     @Body() dto: CreateRegistroConsumoDto,
     @Req() req
   ) {
-    // req.user debe tener el id del usuario autenticado
     const userId = req.user.id;
-    const fotoPath = `/uploads/consumo/${foto.filename}`;
+    const fotoPath = foto ? `/uploads/consumo/${foto.filename}` : undefined;
     return this.registrosService.create(userId, dto, fotoPath);
   }
 

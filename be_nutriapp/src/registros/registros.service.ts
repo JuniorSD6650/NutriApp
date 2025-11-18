@@ -1,11 +1,12 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ProfilesService } from '../profiles/profiles.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, IsNull, Not } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { RegistroConsumo } from './entities/registro-consumo.entity';
 import { CreateRegistroConsumoDto } from './dto/create-registro-consumo.dto';
 import { QueryRegistroConsumoDto } from './dto/query-registro-consumo.dto';
 import { User } from '../users/entities/user.entity';
+import { Platillo } from '../platillos/entities/platillo.entity';
 
 @Injectable()
 export class RegistrosService {
@@ -14,6 +15,8 @@ export class RegistrosService {
     private readonly registroConsumoRepository: Repository<RegistroConsumo>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Platillo)
+    private readonly platilloRepository: Repository<Platillo>,
     private readonly profilesService: ProfilesService,
   ) {}
 
@@ -84,36 +87,49 @@ export class RegistrosService {
     });
   }
 
-  async create(userId: string, dto: CreateRegistroConsumoDto, fotoPath: string) {
+  async create(userId: string, dto: CreateRegistroConsumoDto, fotoPath?: string) {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) throw new NotFoundException('Usuario no encontrado');
+
+    const platillo = await this.platilloRepository.findOne({ 
+      where: { id: dto.platilloId },
+      relations: ['ingredientes', 'ingredientes.ingrediente', 'ingredientes.ingrediente.nutrientes', 'ingredientes.ingrediente.nutrientes.nutriente']
+    });
+    if (!platillo) throw new NotFoundException('Platillo no encontrado');
+
     const registro = this.registroConsumoRepository.create({
       usuario: user,
+      platillo: platillo,
       tipo_comida: dto.tipo_comida,
+      porciones: dto.porciones || 1,
       descripcion: dto.descripcion,
       foto: fotoPath,
     });
+    
     return this.registroConsumoRepository.save(registro);
   }
 
   async findAll(userId: string, query: QueryRegistroConsumoDto) {
     const { page = 1, limit = 5, tipo_comida } = query;
     const skip = (page - 1) * limit;
-    const where: any = { usuario: { id: userId } };
+    const where: any = { usuario: { id: userId }, deletedAt: IsNull() };
     if (tipo_comida) where.tipo_comida = tipo_comida;
+    
     const [data, total] = await this.registroConsumoRepository.findAndCount({
       where,
       take: limit,
       skip,
       order: { fecha: 'DESC' },
+      relations: ['platillo'],
     });
+    
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(userId: string, id: string) {
     const registro = await this.registroConsumoRepository.findOne({
-      where: { id },
-      relations: ['usuario'],
+      where: { id, deletedAt: IsNull() },
+      relations: ['usuario', 'platillo', 'platillo.ingredientes', 'platillo.ingredientes.ingrediente'],
     });
     if (!registro) throw new NotFoundException('Registro no encontrado');
     if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');

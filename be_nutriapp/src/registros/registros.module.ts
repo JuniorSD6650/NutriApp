@@ -5,13 +5,14 @@ import { RegistrosService } from './registros.service';
 import { RegistrosController } from './registros.controller';
 import { MulterModule } from '@nestjs/platform-express';
 import { User } from '../users/entities/user.entity';
+import { Platillo } from '../platillos/entities/platillo.entity'; // <-- AÑADIR
 import { diskStorage } from 'multer';
 import { join } from 'path';
 import { ProfilesModule } from '../profiles/profiles.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([RegistroConsumo, User]),
+    TypeOrmModule.forFeature([RegistroConsumo, User, Platillo]), // <-- AÑADIR Platillo
     MulterModule.register({
       storage: diskStorage({
         destination: (req, file, cb) => {

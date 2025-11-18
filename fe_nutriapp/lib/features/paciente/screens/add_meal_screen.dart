@@ -68,7 +68,7 @@ class _AddMealScreenState extends State<AddMealScreen> {
                 icon: const Icon(Icons.keyboard_arrow_down, color: Colors.white),
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                 onChanged: (value) => setState(() => _selectedMealType = value!),
-                items: ['Desayuno', 'Almuerzo', 'Cena', 'Snack']
+                items: ['Desayuno', 'Almuerzo', 'Cena', 'Snack'] // <-- CAMBIO: 4 opciones
                     .map((e) => DropdownMenuItem(value: e, child: Text(e)))
                     .toList(),
               ),

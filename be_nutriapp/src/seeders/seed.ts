@@ -171,9 +171,9 @@ async function bootstrap() {
     const dataSource = app.get(DataSource);
   await platillosSeed(dataSource);
   await platilloIngredientesSeed(dataSource);
-  await registrosSeed(dataSource);
   await metasSeed(dataSource);
-  console.log('Platillos, ingredientes de platillo, registros y metas sembrados.');
+  await registrosSeed(dataSource); // <-- AHORA DEPENDE DE PLATILLOS
+  console.log('Platillos, ingredientes de platillo, metas y registros sembrados.');
   } catch (error) {
     console.error('Error durante el sembrado:', error);
   } finally {
