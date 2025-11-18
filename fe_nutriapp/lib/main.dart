@@ -9,6 +9,7 @@ import 'package:fe_nutriapp/features/navigation/role_dispatcher_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:fe_nutriapp/core/theme/theme_provider.dart';
 import 'package:fe_nutriapp/core/services/notification_service.dart';
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,10 +20,13 @@ void main() async {
   await notificationService.requestPermissions();
 
   final apiService = ApiService();
+  final api = NutriAppApi();
+  
   runApp(
     MultiProvider(
       providers: [
         Provider<ApiService>(create: (_) => apiService),
+        Provider<NutriAppApi>(create: (_) => api),
         ChangeNotifierProvider<AuthService>(
           create: (context) => AuthService(context.read<ApiService>()),
         ),
