@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/services/api_service.dart';
 import 'package:fe_nutriapp/core/services/auth_service.dart';
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 
 // Importa las nuevas pantallas
@@ -33,8 +34,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _fetchProfile() async {
     try {
-      final apiService = context.read<ApiService>();
-      final data = await apiService.getProfile();
+      final api = context.read<NutriAppApi>(); 
+      final data = await api.auth.getProfile(); 
       setState(() {
         _profileData = data;
         _isLoading = false;

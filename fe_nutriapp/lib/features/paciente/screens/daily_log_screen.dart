@@ -6,6 +6,7 @@ import 'package:fe_nutriapp/features/paciente/screens/add_meal_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/services/api_service.dart';
 import 'package:fe_nutriapp/core/services/auth_service.dart'; // <-- AÑADIR IMPORT
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 
 class DailyLogScreen extends StatefulWidget {
   const DailyLogScreen({super.key});
@@ -34,16 +35,11 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
     });
 
     try {
-      final apiService = context.read<ApiService>();
-      
-      // AÑADE ESTO PARA DEBUGGING
-      final authService = context.read<AuthService>();
-      print('👤 Usuario autenticado: ${authService.userEmail}');
-      print('🔑 Role: ${authService.userRole}');
+      final api = context.read<NutriAppApi>(); // <-- CAMBIO
       
       final results = await Future.wait([
-        apiService.getResumenDiario(_selectedDate),
-        apiService.getMetaActiva(_selectedDate),
+        api.registros.getResumenDiario(_selectedDate), // <-- CAMBIO
+        api.metas.getMetaActiva(_selectedDate), // <-- CAMBIO
       ]);
       
       setState(() {

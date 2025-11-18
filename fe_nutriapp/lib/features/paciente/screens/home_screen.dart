@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:pie_chart/pie_chart.dart';
 import 'package:intl/intl.dart';
-import 'package:fe_nutriapp/core/services/api_service.dart';
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,8 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final apiService = context.read<ApiService>();
-      final data = await apiService.getMetaActiva(_selectedDate);
+      final api = context.read<NutriAppApi>(); // <-- CAMBIO
+      final data = await api.metas.getMetaActiva(_selectedDate); // <-- CAMBIO
       
       setState(() {
         _summaryData = data;
@@ -61,7 +61,6 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: Text('NutriApp', style: theme.appBarTheme.titleTextStyle),
         actions: [
-          IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
           IconButton(icon: const Icon(Icons.chat_bubble_outline), onPressed: () {}),
         ],
       ),

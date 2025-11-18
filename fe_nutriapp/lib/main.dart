@@ -25,11 +25,8 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        Provider<ApiService>(create: (_) => apiService),
         Provider<NutriAppApi>(create: (_) => api),
-        ChangeNotifierProvider<AuthService>(
-          create: (context) => AuthService(context.read<ApiService>()),
-        ),
+        ChangeNotifierProvider(create: (_) => AuthService(api)),
         ChangeNotifierProvider<ThemeProvider>(
           // <-- Esta línea ahora es válida
           create: (_) => ThemeProvider(),

@@ -12,13 +12,11 @@ class RegistrosApi {
     
     final dateString = DateFormat('yyyy-MM-dd').format(selectedDate);
     final url = Uri.parse('${_apiService.baseUrl}/registros/resumen-dia?fecha=$dateString');
-    print('RegistrosApi: GET $url');
     
     http.Response response;
     try {
       response = await http.get(url, headers: _apiService.headers);
     } catch (e) {
-      print('RegistrosApi: Error de conexión: $e');
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
@@ -29,7 +27,6 @@ class RegistrosApi {
         'fecha': dateString,
         'totalRegistros': 0,
         'totalHierro': 0.0,
-        'totalCalorias': 0.0,
         'registrosPorTipo': {
           'desayuno': [],
           'almuerzo': [],
@@ -54,13 +51,11 @@ class RegistrosApi {
     
     final url = Uri.parse('${_apiService.baseUrl}/registros/estadisticas-nutrientes')
         .replace(queryParameters: queryParams);
-    print('RegistrosApi: GET $url');
     
     http.Response response;
     try {
       response = await http.get(url, headers: _apiService.headers);
     } catch (e) {
-      print('RegistrosApi: Error de conexión: $e');
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 

@@ -18,7 +18,6 @@ class AuthApi {
         body: jsonEncode({'email': email, 'password': password}),
       );
     } catch (e) {
-      print('AuthApi: Error de conexión: $e');
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
@@ -38,13 +37,11 @@ class AuthApi {
     if (_apiService.token == null) throw Exception('No estás autenticado.');
     
     final url = Uri.parse('${_apiService.baseUrl}/auth/profile');
-    print('AuthApi: GET $url');
     
     http.Response response;
     try {
       response = await http.get(url, headers: _apiService.headers);
     } catch (e) {
-      print('AuthApi: Error de conexión: $e');
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 
@@ -70,7 +67,6 @@ class AuthApi {
         }),
       );
     } catch (e) {
-      print('AuthApi: Error de conexión: $e');
       throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
     }
 

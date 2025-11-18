@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
-import 'package:fe_nutriapp/core/services/api_service.dart';
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 import 'package:fl_chart/fl_chart.dart'; // <-- AÑADIR IMPORT
 
 class ChartsScreen extends StatefulWidget {
@@ -39,8 +39,8 @@ class _ChartsScreenState extends State<ChartsScreen> {
       final fechaFin = fechaFinBase.add(Duration(days: (_rangeOffset * 7) + 6)); // Domingo
       final fechaInicio = fechaFin.subtract(const Duration(days: 6)); // Lunes
 
-      final apiService = context.read<ApiService>();
-      final data = await apiService.getEstadisticasNutrientes(
+      final api = context.read<NutriAppApi>(); // <-- CAMBIO
+      final data = await api.registros.getEstadisticasNutrientes( // <-- CAMBIO
         fechaInicio: DateFormat('yyyy-MM-dd').format(fechaInicio),
         fechaFin: DateFormat('yyyy-MM-dd').format(fechaFin),
       );
