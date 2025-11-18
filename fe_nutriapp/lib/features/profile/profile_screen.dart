@@ -52,7 +52,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('SnapCalorie', style: theme.appBarTheme.titleTextStyle),
+        title: Text('NutriApp', style: theme.appBarTheme.titleTextStyle),
         elevation: 0,
       ),
       body: _buildBody(context),

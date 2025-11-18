@@ -59,7 +59,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: Text('SnapCalorie', style: theme.appBarTheme.titleTextStyle),
+        title: Text('NutriApp', style: theme.appBarTheme.titleTextStyle),
         actions: [
           IconButton(icon: const Icon(Icons.notifications_none), onPressed: () {}),
           IconButton(icon: const Icon(Icons.chat_bubble_outline), onPressed: () {}),
