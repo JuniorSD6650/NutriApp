@@ -173,6 +173,9 @@ class _ChartsScreenState extends State<ChartsScreen> {
 
     return Card(
       margin: const EdgeInsets.all(16),
+      color: Theme.of(context).brightness == Brightness.dark 
+        ? AppColors.surfaceDark 
+        : Colors.white, // <-- CAMBIO: Dinámico según el tema
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -396,6 +399,9 @@ class _ChartsScreenState extends State<ChartsScreen> {
 
     return Card(
       margin: const EdgeInsets.all(16),
+      color: Theme.of(context).brightness == Brightness.dark 
+        ? AppColors.surfaceDark 
+        : Colors.white, // <-- CAMBIO: Dinámico
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -496,6 +502,9 @@ class _MacroCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.all(8),
       elevation: 2,
+      color: theme.brightness == Brightness.dark 
+        ? AppColors.surfaceDark 
+        : Colors.white, 
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
