@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { ProfilesService } from '../profiles/profiles.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between, IsNull } from 'typeorm';
@@ -10,6 +10,8 @@ import { Platillo } from '../platillos/entities/platillo.entity';
 
 @Injectable()
 export class RegistrosService {
+  private readonly DEBUG = process.env.DEBUG_MODE === 'true';
+
   constructor(
     @InjectRepository(RegistroConsumo)
     private readonly registroConsumoRepository: Repository<RegistroConsumo>,
@@ -63,8 +65,10 @@ export class RegistrosService {
     const startOfDay = new Date(`${fechaStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${fechaStr}T23:59:59.999Z`);
 
-    console.log('🔍 Consultando registros para userId:', userId);
-    console.log('📅 Fecha:', fechaStr);
+    if (this.DEBUG) {
+      console.log('🔍 Consultando registros para userId:', userId);
+      console.log('📅 Fecha:', fechaStr);
+    }
 
     const registros = await this.registroConsumoRepository.find({
       where: { 
@@ -82,25 +86,8 @@ export class RegistrosService {
       order: { fecha: 'ASC' },
     });
 
-    console.log('📊 Registros encontrados:', registros.length);
-    
-    // AÑADIR DEBUGGING DETALLADO
-    for (const registro of registros) {
-      console.log('🍽️ Platillo:', registro.platillo?.nombre);
-      console.log('  - Ingredientes:', registro.platillo?.ingredientes?.length || 0);
-      
-      if (registro.platillo?.ingredientes) {
-        for (const pi of registro.platillo.ingredientes) {
-          console.log(`    • ${pi.ingrediente?.name}: ${pi.cantidad}g`);
-          console.log(`      Nutrientes: ${pi.ingrediente?.nutrientes?.length || 0}`);
-          
-          if (pi.ingrediente?.nutrientes) {
-            for (const inNut of pi.ingrediente.nutrientes) {
-              console.log(`        - ${inNut.nutriente?.name}: ${inNut.value_per_100g}/100g`);
-            }
-          }
-        }
-      }
+    if (this.DEBUG) {
+      console.log('📊 Registros encontrados:', registros.length);
     }
 
     let totalHierro = 0;
@@ -129,25 +116,17 @@ export class RegistrosService {
         for (const platilloIngrediente of registro.platillo.ingredientes) {
           const cantidadEnGramos = platilloIngrediente.cantidad * registro.porciones;
 
-          // AÑADIR LOG AQUÍ
-          console.log(`Procesando: ${platilloIngrediente.ingrediente?.name} - ${cantidadEnGramos}g`);
-
           if (platilloIngrediente.ingrediente?.nutrientes) {
             for (const ingredienteNutriente of platilloIngrediente.ingrediente.nutrientes) {
               const nutriente = ingredienteNutriente.nutriente;
               const valorPor100g = ingredienteNutriente.value_per_100g;
               const valorTotal = (valorPor100g * cantidadEnGramos) / 100;
 
-              console.log(`  → Nutriente: ${nutriente?.name}, Valor: ${valorPor100g}/100g, Total: ${valorTotal}`);
-
               if (nutriente && nutriente.name.toLowerCase().includes('hierro')) {
                 hierroRegistro += valorTotal;
                 totalHierro += valorTotal;
-                console.log(`    ✅ HIERRO DETECTADO: +${valorTotal}mg`);
               }
             }
-          } else {
-            console.log(`  ⚠️ Sin nutrientes para ${platilloIngrediente.ingrediente?.name}`);
           }
         }
       }
@@ -162,8 +141,6 @@ export class RegistrosService {
         hora: registro.fecha.toISOString(),
       });
     }
-
-    console.log('🎯 TOTAL HIERRO CALCULADO:', totalHierro);
 
     return {
       fecha: fechaStr,
@@ -246,8 +223,10 @@ export class RegistrosService {
     const startOfPeriod = new Date(`${fechaInicioStr}T00:00:00.000Z`);
     const endOfPeriod = new Date(`${fechaFinStr}T23:59:59.999Z`);
 
-    console.log('📊 Consultando estadísticas de nutrientes para userId:', userId);
-    console.log('📅 Período:', fechaInicioStr, '-', fechaFinStr);
+    if (this.DEBUG) {
+      console.log('📊 Consultando estadísticas de nutrientes para userId:', userId);
+      console.log('📅 Período:', fechaInicioStr, '-', fechaFinStr);
+    }
 
     // NUEVO: Obtener metas del período
     const metasRepo = this.registroConsumoRepository.manager.getRepository('MetaDiaria');
@@ -339,7 +318,7 @@ export class RegistrosService {
       fechaFin: fechaFinStr,
       diasAnalizados: numDias,
       nutrientesPorDia,
-      metasPorDia, // <-- NUEVO
+      metasPorDia,
       resumen,
     };
   }
