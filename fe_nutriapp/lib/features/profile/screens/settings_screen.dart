@@ -9,6 +9,9 @@ import 'package:fe_nutriapp/core/theme/theme_provider.dart';
 // 1. IMPORTAR EL SERVICIO DE NOTIFICACIONES
 import 'package:fe_nutriapp/core/services/notification_service.dart';
 import 'package:permission_handler/permission_handler.dart'; // <-- AÑADIR IMPORT
+import 'package:fe_nutriapp/core/models/meal_time.dart';
+import 'package:fe_nutriapp/features/profile/screens/meal_times_screen.dart';
+import 'dart:convert';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -19,6 +22,7 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _notificationsEnabled = true;
+  List<MealTime> _mealTimes = [];
 
   @override
   void initState() {
@@ -28,8 +32,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadPreferences() async {
     final prefs = await SharedPreferences.getInstance();
+    final jsonString = prefs.getString('meal_times');
+    
     setState(() {
       _notificationsEnabled = prefs.getBool('notifications') ?? true;
+      
+      if (jsonString != null) {
+        final List<dynamic> jsonList = jsonDecode(jsonString);
+        _mealTimes = jsonList.map((json) => MealTime.fromJson(json)).toList();
+      } else {
+        // Valores por defecto
+        _mealTimes = [
+          MealTime(id: '1', hour: 7, minute: 0, label: 'Desayuno'),
+          MealTime(id: '2', hour: 13, minute: 0, label: 'Almuerzo'),
+          MealTime(id: '3', hour: 19, minute: 0, label: 'Cena'),
+        ];
+        prefs.setString('meal_times', jsonEncode(_mealTimes.map((m) => m.toJson()).toList()));
+      }
     });
   }
 
@@ -43,9 +62,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     if (value) {
       // Solo pedir permisos y activar la notificación diaria
-      print("Solicitando permisos y activando recordatorios diarios...");
+      print("Activando recordatorios de comidas...");
       await notificationService.requestPermissions();
-      await notificationService.scheduleDailyReminder();
+      await notificationService.scheduleMultipleMealReminders(_mealTimes);
     } else {
       print("Desactivando recordatorios...");
       await notificationService.cancelAllReminders();
@@ -65,7 +84,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           SwitchListTile(
             title: Text('Habilitar notificaciones', style: theme.textTheme.titleMedium),
             subtitle: Text(
-              'Recordatorio diario a las 3:49 PM', 
+              _notificationsEnabled 
+                ? '${_mealTimes.length} recordatorios activos' 
+                : 'Sin recordatorios',
               style: theme.textTheme.bodyMedium
             ),
             value: _notificationsEnabled,
@@ -76,21 +97,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
             secondary: Icon(Icons.notifications, color: theme.colorScheme.primary),
           ),
           
-          // BOTÓN DE DEBUG: Notificación instantánea
-          ListTile(
-            leading: Icon(Icons.notifications_active, color: theme.colorScheme.primary),
-            title: Text('Enviar notificación de prueba', style: theme.textTheme.titleMedium),
-            subtitle: Text('Aparecerá al instante', style: theme.textTheme.bodySmall),
-            trailing: Icon(Icons.send, color: theme.colorScheme.primary),
-            onTap: () async {
-              await context.read<NotificationService>().showInstantNotification();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notificación enviada. Revisa la bandeja.')),
+          // Botón para configurar horarios
+          if (_notificationsEnabled)
+            ListTile(
+              leading: Icon(Icons.schedule, color: theme.colorScheme.primary),
+              title: Text('Configurar horarios', style: theme.textTheme.titleMedium),
+              subtitle: Text('${_mealTimes.length} horarios de comida', style: theme.textTheme.bodySmall),
+              trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              onTap: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MealTimesScreen(
+                      onSave: (updatedTimes) {
+                        setState(() {
+                          _mealTimes = updatedTimes;
+                        });
+                        // Reprogramar notificaciones
+                        context.read<NotificationService>().scheduleMultipleMealReminders(updatedTimes);
+                      },
+                    ),
+                  ),
                 );
-              }
-            },
-          ),
+              },
+            ),
           
           _buildSectionTitle(context, 'Apariencia'),
           SwitchListTile(

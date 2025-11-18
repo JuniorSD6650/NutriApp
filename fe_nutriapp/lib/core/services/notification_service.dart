@@ -1,13 +1,13 @@
 // lib/core/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/data/latest_all.dart' as tz; // <-- CAMBIO: all en vez de latest
+import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:fe_nutriapp/core/models/meal_time.dart';
 
 class NotificationService {
   final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
 
-  // 1. Inicializar
   Future<void> initialize() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher'); 
@@ -19,53 +19,27 @@ class NotificationService {
     
     tz.initializeTimeZones();
     
-    // CAMBIO: America/Lima (Perú - UTC-5)
-    final String timeZoneName = 'America/Lima';
-    tz.setLocalLocation(tz.getLocation(timeZoneName));
-    
-    print('Zona horaria configurada: ${tz.local.name}');
-    print('Hora actual (local): ${tz.TZDateTime.now(tz.local)}');
+    try {
+      tz.setLocalLocation(tz.getLocation('America/Lima'));
+    } catch (e) {
+      print("No se pudo configurar la zona horaria local: $e");
+    }
 
     await _notifications.initialize(initializationSettings);
   }
 
-  // 2. Pedir permisos (Android 13+)
   Future<void> requestPermissions() async {
-    // Android 13+ requiere permiso explícito para notificaciones
     final androidPlugin = _notifications
         .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     
     if (androidPlugin != null) {
-      // 1. Pedir permiso de notificaciones
-      final granted = await androidPlugin.requestNotificationsPermission();
-      print('Permiso de notificaciones: ${granted == true ? "Concedido" : "Denegado"}');
-      
-      // 2. Pedir permiso de alarmas exactas (Android 12+)
-      final exactGranted = await androidPlugin.requestExactAlarmsPermission();
-      print('Permiso de alarmas exactas: ${exactGranted == true ? "Concedido" : "Denegado"}');
-    }
-
-    // iOS (si aplica)
-    final iosPlugin = _notifications
-        .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
-    
-    if (iosPlugin != null) {
-      await iosPlugin.requestPermissions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await androidPlugin.requestNotificationsPermission();
+      await androidPlugin.requestExactAlarmsPermission();
     }
   }
 
-  // 3. Agendar recordatorio diario
   Future<void> scheduleDailyReminder() async {
-    final scheduledTime = _nextInstanceOfTime(15, 49);
-    print('==== PROGRAMANDO NOTIFICACIÓN DIARIA ====');
-    print('Zona horaria: ${tz.local.name}');
-    print('Hora actual: ${tz.TZDateTime.now(tz.local)}');
-    print('Hora programada: $scheduledTime');
-    print('=========================================');
+    final scheduledTime = _nextInstanceOfTime(14, 00); // 2:00 PM
     
     await _notifications.zonedSchedule(
       0,
@@ -79,44 +53,108 @@ class NotificationService {
           channelDescription: 'Canal para recordatorios de registro de comidas',
           importance: Importance.max,
           priority: Priority.high,
-          playSound: true, // AÑADIDO
-          enableVibration: true, // AÑADIDO
+          playSound: true,
+          enableVibration: true,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+      
+      // --- ¡LÍNEA ELIMINADA! ---
+      // uiLocalNotificationDateInterpretation: ... (Ya no es necesaria)
+      // ------------------------
+      
+      // En versiones nuevas, este es el reemplazo (si es requerido):
     );
     print('✅ Recordatorio diario programado');
   }
 
-  // MÉTODO DE DEBUG: Mostrar notificación INSTANTÁNEA
+  // Programar múltiples notificaciones
+  Future<void> scheduleMultipleMealReminders(List<MealTime> mealTimes) async {
+    // Primero cancelar todas las anteriores
+    await _notifications.cancelAll();
+    
+    // Programar cada una
+    for (final mealTime in mealTimes) {
+      final scheduledTime = _nextInstanceOfTime(mealTime.hour, mealTime.minute);
+      final notificationId = mealTime.id.hashCode; // ID único basado en el ID del meal
+      
+      print('📅 Programando ${mealTime.label} a las ${mealTime.timeString}');
+      
+      await _notifications.zonedSchedule(
+        notificationId,
+        '🍽️ Hora de ${mealTime.label}',
+        'No olvides registrar tu comida para tu control de hierro.',
+        scheduledTime,
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            'meal_reminders_channel',
+            'Recordatorios de Comida',
+            channelDescription: 'Notificaciones para recordarte registrar tus comidas',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            enableVibration: true,
+          ),
+        ),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.time, // Repetir diariamente
+      );
+    }
+    
+    print('✅ ${mealTimes.length} recordatorios programados');
+  }
+
+  Future<void> cancelAllReminders() async {
+    await _notifications.cancelAll();
+    print('❌ Todos los recordatorios cancelados');
+  }
+
   Future<void> showInstantNotification() async {
     await _notifications.show(
       999,
-      '🔔 Notificación de Prueba',
-      'Si ves esto, las notificaciones están funcionando correctamente.',
+      '🔔 Prueba Instantánea',
+      '¡Las notificaciones funcionan!',
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'instant_test_channel',
-          'Pruebas Instantáneas',
-          channelDescription: 'Canal para probar notificaciones al instante',
+          'Pruebas',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+      ),
+    );
+  }
+
+  Future<void> scheduleNotificationIn10Seconds() async {
+    final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
+    final tz.TZDateTime scheduledDate = now.add(const Duration(seconds: 10));
+
+    print('🕒 Programando prueba para dentro de 10s: $scheduledDate');
+
+    await _notifications.zonedSchedule(
+      888,
+      '⏳ Prueba de 10 segundos',
+      '¡Funciona! Las notificaciones programadas están activas.',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'scheduled_test_channel',
+          'Pruebas Programadas',
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
         ),
       ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      
+      // --- ¡LÍNEA ELIMINADA! ---
+      // uiLocalNotificationDateInterpretation: ...
+      // ------------------------
     );
-    print('✅ Notificación instantánea enviada');
   }
 
-  // 4. Cancelar
-  Future<void> cancelAllReminders() async {
-    await _notifications.cancelAll();
-    print('❌ Todos los recordatorios cancelados');
-  }
-
-  // Helper: Calcular la próxima hora específica
   tz.TZDateTime _nextInstanceOfTime(int hour, int minute) {
     final tz.TZDateTime now = tz.TZDateTime.now(tz.local);
     tz.TZDateTime scheduledDate = tz.TZDateTime(
@@ -127,13 +165,9 @@ class NotificationService {
       hour, 
       minute
     );
-    
-    // Si la hora ya pasó hoy, programa para mañana
     if (scheduledDate.isBefore(now)) {
       scheduledDate = scheduledDate.add(const Duration(days: 1));
-      print('⏭️ La hora ya pasó hoy, programando para mañana');
     }
-    
     return scheduledDate;
   }
 }
