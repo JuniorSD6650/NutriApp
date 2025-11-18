@@ -174,10 +174,10 @@ async function bootstrap() {
     await platilloIngredientesSeed(dataSource);
 
     console.log('5. Sembrando registros de consumo...');
-    await registrosSeed(dataSource);
+    await registrosSeed(dataSource); // <-- PRIMERO LOS REGISTROS
 
     console.log('6. Sembrando metas (calculando hierro consumido)...');
-    await metasSeed(dataSource);
+    await metasSeed(dataSource); // <-- DESPUÉS LAS METAS
     console.log('Platillos, ingredientes de platillo, metas y registros sembrados.');
     
   } catch (error) {

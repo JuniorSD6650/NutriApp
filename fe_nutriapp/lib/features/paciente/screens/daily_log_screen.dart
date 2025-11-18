@@ -179,8 +179,35 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
   Widget _buildDailySummary(BuildContext context) {
     final theme = Theme.of(context);
     final consumed = (_dailyData?['totalHierro'] ?? 0.0) as num;
-    final goal = (_metaData?['hierroObjetivo'] ?? 27.0) as num; // <-- CAMBIO: Leer de la meta
-    final remaining = goal - consumed;
+    final goal = (_metaData?['hierroObjetivo'] ?? 27.0) as num;
+    
+    // --- LÓGICA DE ESTADO DEL PROGRESO ---
+    final double excessThreshold = goal * 1.2; // 120% de la meta
+    
+    String statusText;
+    String displayValue;
+    Color displayColor;
+    Color? borderColor;
+
+    if (consumed >= excessThreshold) {
+      // Estado 1: Riesgo de Exceso
+      statusText = 'Riesgo (Exceso)';
+      displayValue = '${(consumed - goal).toStringAsFixed(1)} mg extra';
+      displayColor = Colors.red.shade700;
+      borderColor = Colors.red.shade700;
+    } else if (consumed >= goal) {
+      // Estado 2: Meta Cumplida
+      statusText = 'Meta Cumplida';
+      displayValue = '${consumed.toStringAsFixed(1)} mg';
+      displayColor = Colors.green.shade700;
+      borderColor = Colors.green.shade700;
+    } else {
+      // Estado 3: Pendiente
+      statusText = 'Restante';
+      displayValue = '${(goal - consumed).toStringAsFixed(1)} mg';
+      displayColor = AppColors.primary;
+      borderColor = null; // Sin borde en estado pendiente
+    }
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -188,13 +215,16 @@ class _DailyLogScreenState extends State<DailyLogScreen> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
+        border: borderColor != null 
+          ? Border.all(color: borderColor, width: 2) 
+          : null,
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _buildSummaryItem(context, 'Meta', '${goal.toStringAsFixed(0)} mg'),
           _buildSummaryItem(context, 'Consumido', '${consumed.toStringAsFixed(1)} mg', color: AppColors.primary),
-          _buildSummaryItem(context, 'Restante', '${remaining.toStringAsFixed(1)} mg'),
+          _buildSummaryItem(context, statusText, displayValue, color: displayColor),
         ],
       ),
     );

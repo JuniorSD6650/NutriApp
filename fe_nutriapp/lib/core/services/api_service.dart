@@ -10,7 +10,7 @@ class ApiService {
     'ngrok-skip-browser-warning': 'true',
   };
 
-  final String _baseUrl = "https://00f88764d675.ngrok-free.app"; // Tu URL
+  final String _baseUrl = "https://49dfc2a2f4e9.ngrok-free.app"; // Tu URL
 
   String? _token;
   
