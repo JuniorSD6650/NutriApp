@@ -98,4 +98,15 @@ export class RegistrosController {
     const userId = req.user.sub; // <-- CAMBIO
     return this.registrosService.resumenDia(userId, fecha);
   }
+
+  @Get('estadisticas-nutrientes')
+  @Roles(Role.PACIENTE)
+  async estadisticasNutrientes(
+    @Req() req,
+    @Query('fechaInicio') fechaInicio?: string,
+    @Query('fechaFin') fechaFin?: string,
+  ) {
+    const userId = req.user.sub;
+    return this.registrosService.estadisticasNutrientes(userId, fechaInicio, fechaFin);
+  }
 }

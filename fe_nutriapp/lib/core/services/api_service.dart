@@ -224,4 +224,36 @@ class ApiService {
 
     _processResponse(response); // Lanza excepción si hay error, no retorna nada si éxito
   }
+
+  // --- ESTADÍSTICAS DE NUTRIENTES ---
+  Future<Map<String, dynamic>> getEstadisticasNutrientes({
+    String? fechaInicio,
+    String? fechaFin,
+  }) async {
+    if (_token == null) throw Exception('No estás autenticado.');
+    
+    final queryParams = <String, String>{};
+    if (fechaInicio != null) queryParams['fechaInicio'] = fechaInicio;
+    if (fechaFin != null) queryParams['fechaFin'] = fechaFin;
+    
+    final url = Uri.parse('$_baseUrl/registros/estadisticas-nutrientes').replace(queryParameters: queryParams);
+    print('ApiService: GET $url');
+    http.Response response;
+
+    try {
+      response = await http.get(
+        url,
+        headers: {
+          ..._ngrokHeaders,
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_token',
+        },
+      );
+    } catch (e) {
+      print('ApiService: Error de conexión: $e');
+      throw Exception('No se pudo conectar al servidor. Revisa tu internet.');
+    }
+
+    return _processResponse(response);
+  }
 }

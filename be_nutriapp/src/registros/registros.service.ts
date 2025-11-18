@@ -236,4 +236,111 @@ export class RegistrosService {
     if (registro.usuario.id !== userId) throw new ForbiddenException('No tienes acceso a este registro');
     return registro;
   }
+
+  // GET /registros/estadisticas-nutrientes?fechaInicio=YYYY-MM-DD&fechaFin=YYYY-MM-DD
+  async estadisticasNutrientes(userId: string, fechaInicio?: string, fechaFin?: string) {
+    const hoy = new Date().toISOString().split('T')[0];
+    const fechaInicioStr = fechaInicio || new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    const fechaFinStr = fechaFin || hoy;
+
+    const startOfPeriod = new Date(`${fechaInicioStr}T00:00:00.000Z`);
+    const endOfPeriod = new Date(`${fechaFinStr}T23:59:59.999Z`);
+
+    console.log('📊 Consultando estadísticas de nutrientes para userId:', userId);
+    console.log('📅 Período:', fechaInicioStr, '-', fechaFinStr);
+
+    // NUEVO: Obtener metas del período
+    const metasRepo = this.registroConsumoRepository.manager.getRepository('MetaDiaria');
+    const metas = await metasRepo.find({
+      where: {
+        paciente: { id: userId },
+        fecha: Between(fechaInicioStr, fechaFinStr),
+      },
+    });
+
+    const metasPorDia: Record<string, number> = {};
+    for (const meta of metas) {
+      metasPorDia[meta.fecha] = meta.hierroObjetivo;
+    }
+
+    const registros = await this.registroConsumoRepository.find({
+      where: { 
+        usuario: { id: userId }, 
+        fecha: Between(startOfPeriod, endOfPeriod),
+        deletedAt: IsNull() 
+      },
+      relations: [
+        'platillo',
+        'platillo.ingredientes',
+        'platillo.ingredientes.ingrediente',
+        'platillo.ingredientes.ingrediente.nutrientes',
+        'platillo.ingredientes.ingrediente.nutrientes.nutriente'
+      ],
+      order: { fecha: 'ASC' },
+    });
+
+    // Generar todos los días del rango
+    const nutrientesPorDia: Record<string, Record<string, number>> = {};
+    const fechaActual = new Date(startOfPeriod);
+    
+    while (fechaActual <= endOfPeriod) {
+      const fechaStr = fechaActual.toISOString().split('T')[0];
+      nutrientesPorDia[fechaStr] = {};
+      fechaActual.setDate(fechaActual.getDate() + 1);
+    }
+
+    // Procesar registros existentes
+    for (const registro of registros) {
+      const fechaStr = registro.fecha.toISOString().split('T')[0];
+
+      if (registro.platillo && registro.platillo.ingredientes) {
+        for (const platilloIngrediente of registro.platillo.ingredientes) {
+          const cantidadEnGramos = platilloIngrediente.cantidad * registro.porciones;
+
+          if (platilloIngrediente.ingrediente?.nutrientes) {
+            for (const ingredienteNutriente of platilloIngrediente.ingrediente.nutrientes) {
+              const nutriente = ingredienteNutriente.nutriente;
+              const valorPor100g = ingredienteNutriente.value_per_100g;
+              const valorTotal = (valorPor100g * cantidadEnGramos) / 100;
+
+              const nombreNutriente = nutriente.name;
+              if (!nutrientesPorDia[fechaStr][nombreNutriente]) {
+                nutrientesPorDia[fechaStr][nombreNutriente] = 0;
+              }
+              nutrientesPorDia[fechaStr][nombreNutriente] += valorTotal;
+            }
+          }
+        }
+      }
+    }
+
+    // Calcular promedios y totales
+    const nutrientesUnicos = new Set<string>();
+    Object.values(nutrientesPorDia).forEach(dia => {
+      Object.keys(dia).forEach(nutriente => nutrientesUnicos.add(nutriente));
+    });
+
+    const resumen: Record<string, { total: number; promedio: number }> = {};
+    const numDias = Object.keys(nutrientesPorDia).length || 1;
+
+    for (const nutriente of nutrientesUnicos) {
+      let total = 0;
+      for (const dia of Object.values(nutrientesPorDia)) {
+        total += dia[nutriente] || 0;
+      }
+      resumen[nutriente] = {
+        total: Math.round(total * 100) / 100,
+        promedio: Math.round((total / numDias) * 100) / 100,
+      };
+    }
+
+    return {
+      fechaInicio: fechaInicioStr,
+      fechaFin: fechaFinStr,
+      diasAnalizados: numDias,
+      nutrientesPorDia,
+      metasPorDia, // <-- NUEVO
+      resumen,
+    };
+  }
 }
