@@ -15,10 +15,20 @@ import { IngredientesService } from '../ingredientes/ingredientes.service';
 import { ingredientesSeed } from './ingredientes.seed';
 import { ingredienteNutrientesSeed } from './ingrediente-nutrientes.seed';
 import { DataSource } from 'typeorm';
+import { User } from '../users/entities/user.entity';
+import { PacienteProfile } from '../users/entities/paciente-profile.entity';
+import { MedicoProfile } from '../users/entities/medico-profile.entity';
+import { Ingrediente } from '../ingredientes/entities/ingrediente.entity';
+import { Nutriente } from '../ingredientes/entities/nutriente.entity'; // <-- CAMBIO AQUÍ
+import { IngredienteNutriente } from '../ingredientes/entities/ingrediente-nutriente.entity';
+import { Platillo } from '../platillos/entities/platillo.entity';
+import { PlatilloIngrediente } from '../platillos/entities/platillo-ingrediente.entity';
 import { platillosSeed } from './platillos.seed';
+import { platilloIngredientesSeed } from './platillo-ingredientes.seed';
 import { registrosSeed } from './registros.seed';
 import { metasSeed } from './metas.seed';
-import { platilloIngredientesSeed } from './platillo-ingredientes.seed';
+import * as bcrypt from 'bcrypt';
+import { Role } from '../users/enums/role.enum';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -26,12 +36,26 @@ async function bootstrap() {
 
   try {
     const usersService = app.get(UsersService);
-    const medicoEmailToId = {};
+    const dataSource = app.get(DataSource);
+    const userRepo = dataSource.getRepository(User);
+    const medicoProfileRepo = dataSource.getRepository(MedicoProfile);
+    const pacienteProfileRepo = dataSource.getRepository(PacienteProfile);
     
-    // 1. Insertar médicos y guardar email->id
-    for (const userData of usersSeed.filter(u => u.role === 'medico')) {
+    const medicoEmailToProfileId = {}; // mapear email a MedicoProfile ID
+    
+    // 1. Insertar médicos y crear sus perfiles
+    console.log('👨‍⚕️ Creando médicos...');
+    for (let i = 0; i < 5; i++) {
+      const userData = {
+        email: `medico${i+1}@nutriapp.com`,
+        password: `medico${i+1}123`,
+        name: `Dr. Nutri${i+1}`,
+        role: Role.MEDICO,
+      };
+
       const exists = await usersService.findOneByEmail(userData.email);
       let medico;
+      
       if (exists) {
         medico = exists;
         console.log(`El médico ${userData.email} ya existe. Omitiendo.`);
@@ -39,10 +63,28 @@ async function bootstrap() {
         medico = await usersService.createUser(userData);
         console.log(`✓ Médico ${userData.email} creado.`);
       }
-      medicoEmailToId[userData.email] = medico.id;
+      
+      // Crear perfil de médico si no existe
+      let medicoProfile = await medicoProfileRepo.findOne({
+        where: { user: { id: medico.id } }
+      });
+
+      if (!medicoProfile) {
+        const medicoData = medicosProfilesSeed[i];
+        medicoProfile = medicoProfileRepo.create({
+          especialidad: medicoData.specialty,
+          numero_colegiado: medicoData.licenseNumber,
+          biografia: `${medicoData.yearsExperience} años de experiencia`,
+          user: medico,
+        });
+        await medicoProfileRepo.save(medicoProfile);
+        console.log(`✓ Perfil de médico para ${userData.email} creado.`);
+      }
+
+      medicoEmailToProfileId[userData.email] = medicoProfile.id;
     }
 
-    // 2. Insertar admin normalmente
+    // 2. Insertar admin
     const adminData = usersSeed.find(u => u.role === 'admin');
     if (adminData) {
       const exists = await usersService.findOneByEmail(adminData.email);
@@ -52,76 +94,57 @@ async function bootstrap() {
       }
     }
 
-    // 3. Insertar pacientes, luego actualizar con medicoId real
-    for (const userData of usersSeed.filter(u => u.role === 'paciente')) {
-      const exists = await usersService.findOneByEmail(userData.email);
+    // 3. Insertar pacientes y asignar médico
+    console.log('👥 Creando pacientes y asignando médicos...');
+    for (let i = 0; i < 15; i++) {
+      const pacienteData = {
+        email: `paciente${i+1}@nutriapp.com`,
+        password: `paciente${i+1}123`,
+        name: `Paciente Demo${i+1}`,
+        role: Role.PACIENTE,
+        medicoId: (i % 5) + 1, // Asignar médico 1-5 de forma circular
+      };
+
+      const exists = await usersService.findOneByEmail(pacienteData.email);
       if (exists) {
-        console.log(`El paciente ${userData.email} ya existe. Omitiendo.`);
+        console.log(`El paciente ${pacienteData.email} ya existe. Omitiendo.`);
         continue;
       }
-      // Extraer medicoId si existe (solo para pacientes)
-      const { medicoId, ...pacienteData } = userData as typeof userData & { medicoId?: number };
-      const paciente = await usersService.createUser(pacienteData);
-      // Asignar médico real si corresponde
-      if (medicoId) {
-        const medicoEmail = `medico${medicoId}@nutriapp.com`;
-        const medicoDbId = medicoEmailToId[medicoEmail];
-        if (medicoDbId) {
-          await usersService.asignarPacientesAMedico(medicoDbId, [paciente.id]);
-          console.log(`✓ Paciente ${userData.email} creado y asignado a médico ${medicoEmail}`);
-        } else {
-          console.log(`Paciente ${userData.email} creado pero médico ${medicoEmail} no encontrado.`);
+
+      const { medicoId, ...userCreateData } = pacienteData;
+      const paciente = await usersService.createUser(userCreateData);
+      
+      // ✅ ASIGNAR MÉDICO CORRECTAMENTE
+      const medicoEmail = `medico${medicoId}@nutriapp.com`;
+      const medicoProfileId = medicoEmailToProfileId[medicoEmail];
+      
+      if (medicoProfileId) {
+        const medicoProfile = await medicoProfileRepo.findOne({
+          where: { id: medicoProfileId }
+        });
+        
+        if (medicoProfile) {
+          paciente.medicoAsignado = medicoProfile;
+          await userRepo.save(paciente);
+          console.log(`✓ Paciente ${paciente.email} asignado a ${medicoEmail}`);
         }
-      } else {
-        console.log(`✓ Paciente ${userData.email} creado sin médico asignado.`);
       }
-    }
 
-    const pacienteProfilesService = app.get(PacienteProfilesService);
-    for (const profileData of pacientesProfilesSeed) {
-      const user = await usersService.findOneByEmail(profileData.userEmail);
-      if (!user) {
-        console.log(`Usuario para perfil paciente (${profileData.userEmail}) no encontrado. Omitiendo perfil.`);
-        continue;
-      }
-      const dto = {
-        fecha_nacimiento: profileData.birthDate || '1990-01-01',
-        peso_inicial_kg: profileData.weight || 60,
-        altura_cm: profileData.height || 165,
-        alergias_alimentarias: profileData.allergies || '',
+      // Crear perfil de paciente
+      const perfilData = pacientesProfilesSeed[i % pacientesProfilesSeed.length];
+      const pacienteProfile = pacienteProfileRepo.create({
+        fecha_nacimiento: perfilData.birthDate || '1990-01-01',
+        peso_inicial_kg: perfilData.weight || 60,
+        altura_cm: perfilData.height || 165,
+        alergias_alimentarias: perfilData.allergies || '',
         toma_suplementos_hierro: false,
-        user: user,
-      };
-      if (user.pacienteProfile) {
-        console.log(`Perfil de paciente para ${profileData.userEmail} ya existe. Omitiendo.`);
-        continue;
-      }
-      await pacienteProfilesService.create(dto);
-      console.log(`✓ Perfil de paciente para ${profileData.userEmail} creado.`);
+        user: paciente,
+      });
+      await pacienteProfileRepo.save(pacienteProfile);
+      console.log(`✓ Perfil de paciente para ${paciente.email} creado.`);
     }
 
-    const medicoProfilesService = app.get(MedicoProfilesService);
-    for (const profileData of medicosProfilesSeed) {
-      const user = await usersService.findOneByEmail(profileData.userEmail);
-      if (!user) {
-        console.log(`Usuario para perfil médico (${profileData.userEmail}) no encontrado. Omitiendo perfil.`);
-        continue;
-      }
-      const dto = {
-        especialidad: profileData.specialty || 'Nutriología',
-        numero_colegiado: profileData.licenseNumber || 'MED123456',
-        biografia: '',
-        user: user,
-      };
-      if (user.medicoProfile) {
-        console.log(`Perfil de médico para ${profileData.userEmail} ya existe. Omitiendo.`);
-        continue;
-      }
-      await medicoProfilesService.create(dto);
-      console.log(`✓ Perfil de médico para ${profileData.userEmail} creado.`);
-    }
-
-    // ORDEN CORRECTO (verificar que esté así):
+    // 4. Seeders de datos nutricionales
     console.log('1. Sembrando nutrientes...');
     const nutrientesService = app.get(NutrientesService);
     for (const nutrienteData of nutrientesSeed) {
@@ -167,18 +190,18 @@ async function bootstrap() {
     }
 
     console.log('3. Sembrando platillos...');
-    const dataSource = app.get(DataSource);
-    await platillosSeed(dataSource);
+    await platillosSeed(dataSource); // <-- YA DEBE FUNCIONAR
 
     console.log('4. Relacionando platillos con ingredientes...');
-    await platilloIngredientesSeed(dataSource);
+    await platilloIngredientesSeed(dataSource); // <-- YA DEBE FUNCIONAR
 
     console.log('5. Sembrando registros de consumo...');
-    await registrosSeed(dataSource); // <-- PRIMERO LOS REGISTROS
+    await registrosSeed(dataSource);
 
     console.log('6. Sembrando metas (calculando hierro consumido)...');
-    await metasSeed(dataSource); // <-- DESPUÉS LAS METAS
-    console.log('Platillos, ingredientes de platillo, metas y registros sembrados.');
+    await metasSeed(dataSource);
+    
+    console.log('✅ Todos los seeders completados exitosamente.');
     
   } catch (error) {
     console.error('Error durante el sembrado:', error);
@@ -189,3 +212,134 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+export const runSeeders = async (dataSource: DataSource) => {
+  const userRepo = dataSource.getRepository(User);
+  const pacienteProfileRepo = dataSource.getRepository(PacienteProfile);
+  const medicoProfileRepo = dataSource.getRepository(MedicoProfile);
+  const nutrienteRepo = dataSource.getRepository(Nutriente);
+  const ingredienteRepo = dataSource.getRepository(Ingrediente);
+  const ingredienteNutrienteRepo = dataSource.getRepository(IngredienteNutriente);
+  const platilloRepo = dataSource.getRepository(Platillo);
+  const platilloIngredienteRepo = dataSource.getRepository(PlatilloIngrediente);
+
+  console.log('🌱 Iniciando seeders...');
+
+  // 1. USUARIOS
+  console.log('👥 Creando usuarios...');
+  const createdUsers: User[] = [];
+  const medicosMap = new Map<number, MedicoProfile>();
+
+  for (const userData of usersSeed) {
+    const hashedPassword = await bcrypt.hash(userData.password, 10);
+    const user = userRepo.create({
+      email: userData.email,
+      password: hashedPassword,
+      name: userData.name,
+      role: userData.role,
+    });
+    const savedUser = await userRepo.save(user);
+    createdUsers.push(savedUser);
+
+    // Si es médico, crear su perfil inmediatamente
+    if (savedUser.role === Role.MEDICO) {
+      const medicoData = medicosProfilesSeed.find(m => m.userEmail === savedUser.email);
+      if (medicoData) {
+        const medicoProfile = medicoProfileRepo.create({
+          especialidad: medicoData.specialty,
+          numero_colegiado: medicoData.licenseNumber,
+          biografia: `${medicoData.yearsExperience} años de experiencia`,
+          user: savedUser,
+        });
+        const savedMedicoProfile = await medicoProfileRepo.save(medicoProfile);
+        
+        // ✅ GUARDAR EN MAP usando el índice del seed
+        const seedIndex = usersSeed.findIndex(u => u.email === savedUser.email);
+        medicosMap.set(seedIndex, savedMedicoProfile);
+        
+        console.log(`✅ Médico creado: ${savedUser.email} (ID: ${savedUser.id}, ProfileID: ${savedMedicoProfile.id})`);
+      }
+    }
+  }
+
+  // 2. PERFILES DE PACIENTES + ASIGNACIÓN DE MÉDICO
+  console.log('🏥 Creando perfiles de pacientes...');
+  const pacientes = createdUsers.filter(u => u.role === Role.PACIENTE);
+
+  for (let i = 0; i < pacientes.length; i++) {
+    const paciente = pacientes[i];
+    const perfilData = pacientesProfilesSeed[i % pacientesProfilesSeed.length];
+
+    const pacienteProfile = pacienteProfileRepo.create({
+      ...perfilData,
+      user: paciente,
+    });
+    await pacienteProfileRepo.save(pacienteProfile);
+
+    // ✅ CORRECCIÓN: Usar type assertion
+    const seedIndex = usersSeed.findIndex(u => u.email === paciente.email);
+    const pacienteSeed = usersSeed[seedIndex] as { medicoId?: number; [key: string]: any };
+    const medicoSeedIndex = pacienteSeed?.medicoId;
+    
+    if (medicoSeedIndex !== undefined) {
+      const medicoProfileId = medicosMap.get(medicoSeedIndex - 1);
+      
+      if (medicoProfileId) {
+        paciente.medicoAsignado = medicoProfileId;
+        await userRepo.save(paciente);
+        console.log(`✅ Paciente ${paciente.email} asignado a médico (ProfileID: ${medicoProfileId.id})`);
+      }
+    }
+  }
+
+  // 3. NUTRIENTES
+  console.log('🥗 Creando nutrientes...');
+  for (const nutrienteData of nutrientesSeed) {
+    if (!(await nutrienteRepo.findOne({ where: { name: nutrienteData.name } }))) {
+      await nutrienteRepo.save(nutrienteRepo.create(nutrienteData));
+    }
+  }
+
+  // 4. INGREDIENTES CON NUTRIENTES
+  console.log('🍎 Creando ingredientes con nutrientes...');
+  for (const ingredienteData of ingredientesSeed) {
+    if (!(await ingredienteRepo.findOne({ where: { name: ingredienteData.name } }))) {
+      const ingrediente = await ingredienteRepo.save(ingredienteRepo.create(ingredienteData));
+
+      const nutrientesParaIngrediente = ingredienteNutrientesSeed.filter(
+        (in_nut) => in_nut.ingrediente === ingredienteData.name
+      );
+
+      for (const in_nut of nutrientesParaIngrediente) {
+        const nutriente = await nutrienteRepo.findOne({ where: { name: in_nut.nutriente } });
+        if (nutriente) {
+          await ingredienteNutrienteRepo.save(
+            ingredienteNutrienteRepo.create({
+              ingrediente,
+              nutriente,
+              value_per_100g: in_nut.value,
+            })
+          );
+        }
+      }
+    }
+  }
+
+  // 5. PLATILLOS
+  console.log('🍽️ Creando platillos...');
+  await platillosSeed(dataSource); // <-- CAMBIO: Esta función ahora guarda directamente, no devuelve nada
+
+  // 6. PLATILLO-INGREDIENTES
+  console.log('🥘 Relacionando platillos con ingredientes...');
+  await platilloIngredientesSeed(dataSource); // <-- CAMBIO: Esta función ahora guarda directamente, no devuelve nada
+
+  // 7. REGISTROS DE CONSUMO
+  console.log('📝 Creando registros de consumo...');
+  await registrosSeed(dataSource);
+
+  // 8. METAS (calculando hierro consumido)
+  console.log('🎯 Creando metas diarias...');
+  await metasSeed(dataSource);
+
+  console.log('✅ Todos los seeders completados exitosamente.');
+};

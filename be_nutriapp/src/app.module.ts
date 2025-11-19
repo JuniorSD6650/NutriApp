@@ -19,6 +19,7 @@ import { RegistroConsumo } from './registros/entities/registro-consumo.entity';
 import { RefreshToken } from './auth/entities/refresh-token.entity';
 import { PlatillosModule } from './platillos/platillos.module';
 import { MetasModule } from './metas/metas.module';
+import { ProfilesModule } from './profiles/profiles.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -53,6 +54,7 @@ import { MetasModule } from './metas/metas.module';
   PlatillosModule,
   RegistrosModule,
   MetasModule,
+  ProfilesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

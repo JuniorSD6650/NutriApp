@@ -10,7 +10,8 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
-  OneToOne
+  OneToOne,
+  JoinColumn
 } from 'typeorm';
 import { Role } from '../enums/role.enum';
 import { PacienteProfile } from './paciente-profile.entity';
@@ -18,23 +19,17 @@ import { MedicoProfile } from './medico-profile.entity';
 
 @Entity('users')
 export class User {
-  @OneToMany(() => MetaDiaria, (meta) => meta.paciente)
-  metas: MetaDiaria[];
-
-  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
-  refreshTokens: RefreshToken[];
-
   @PrimaryGeneratedColumn('uuid')
   id: string;
-
-  @Column({ length: 100 })
-  name: string;
 
   @Column({ unique: true })
   email: string;
 
-  @Column({ nullable: true })
-  password?: string;
+  @Column()
+  name: string;
+
+  @Column()
+  password: string;
 
   @Column({ nullable: true })
   googleId?: string;
@@ -49,25 +44,21 @@ export class User {
   })
   role: Role;
 
+  @OneToOne(() => PacienteProfile, profile => profile.user, { cascade: true })
+  pacienteProfile: PacienteProfile;
 
-  @ManyToOne(
-    () => User,      
-    (medico) => medico.pacientes,
-    { nullable: true }
-  )
-  medico: User;
+  @OneToOne(() => MedicoProfile, profile => profile.user, { cascade: true })
+  medicoProfile: MedicoProfile;
 
-  @OneToMany(
-    () => User,    
-    (paciente) => paciente.medico 
-  )
-  pacientes: User[];
+  @ManyToOne(() => MedicoProfile, medico => medico.pacientes, { nullable: true })
+  @JoinColumn({ name: 'medico_asignado_id' })
+  medicoAsignado: MedicoProfile;
   
-  @OneToOne(() => PacienteProfile, (profile) => profile.user, { nullable: true })
-  pacienteProfile?: PacienteProfile;
+  @OneToMany(() => MetaDiaria, (meta) => meta.paciente)
+  metas: MetaDiaria[];
 
-  @OneToOne(() => MedicoProfile, (profile) => profile.user, { nullable: true })
-  medicoProfile?: MedicoProfile;
+  @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
+  refreshTokens: RefreshToken[];
   
   @CreateDateColumn()
   createdAt: Date;

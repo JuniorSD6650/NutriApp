@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 class ApiService {
-  final String baseUrl = "https://617254a2d300.ngrok-free.app";
+  final String baseUrl = "https://9ff96a4b80a3.ngrok-free.app";
   
   final Map<String, String> _ngrokHeaders = {
     'ngrok-skip-browser-warning': 'true',
@@ -38,6 +38,23 @@ class ApiService {
       print('ApiService: 401 Detectado. Ejecutando logout automático.');
       onTokenExpired?.call();
       throw Exception('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+    }
+
+    // ✅ AÑADIR: También hacer logout en caso de 404 con mensaje específico
+    if (response.statusCode == 404) {
+      try {
+        final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
+        final message = errorBody['message'] ?? '';
+        
+        if (message.toString().contains('no encontrado') || 
+            message.toString().contains('not found')) {
+          print('ApiService: Usuario no encontrado en BD. Ejecutando logout automático.');
+          onTokenExpired?.call();
+          throw Exception('Tu cuenta ya no existe. Por favor, contacta al administrador.');
+        }
+      } catch (e) {
+        if (e.toString().contains('Exception:')) rethrow;
+      }
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

@@ -1,195 +1,92 @@
 import { DataSource } from 'typeorm';
-import { PlatilloIngrediente } from '../platillos/entities/platillo-ingrediente.entity';
 import { Platillo } from '../platillos/entities/platillo.entity';
 import { Ingrediente } from '../ingredientes/entities/ingrediente.entity';
+import { PlatilloIngrediente } from '../platillos/entities/platillo-ingrediente.entity';
 
 export const platilloIngredientesSeed = async (dataSource: DataSource) => {
-  const platilloIngredienteRepo = dataSource.getRepository(PlatilloIngrediente);
   const platilloRepo = dataSource.getRepository(Platillo);
   const ingredienteRepo = dataSource.getRepository(Ingrediente);
+  const platilloIngredienteRepo = dataSource.getRepository(PlatilloIngrediente);
 
-  const count = await platilloIngredienteRepo.count();
-  if (count > 0) {
-    console.log(`⚠️ Ya existen ${count} relaciones platillo-ingrediente. Omitiendo.`);
-    return;
-  }
+  const relaciones = [
+    // Lentejas guisadas con arroz
+    { platillo: 'Lentejas guisadas con arroz', ingrediente: 'Lentejas', cantidad: 150, unidad: 'g' },
+    { platillo: 'Lentejas guisadas con arroz', ingrediente: 'Arroz integral', cantidad: 100, unidad: 'g' },
+    { platillo: 'Lentejas guisadas con arroz', ingrediente: 'Tomate', cantidad: 50, unidad: 'g' },
+    { platillo: 'Lentejas guisadas con arroz', ingrediente: 'Cebolla', cantidad: 30, unidad: 'g' },
 
-  console.log('🔗 Creando recetas con ingredientes ricos en hierro...');
+    // Hígado encebollado
+    { platillo: 'Hígado encebollado', ingrediente: 'Hígado de res', cantidad: 200, unidad: 'g' },
+    { platillo: 'Hígado encebollado', ingrediente: 'Cebolla', cantidad: 80, unidad: 'g' },
 
-  // CORRECCIÓN: Cambiar 'nombre' por 'name' para Ingrediente
-  const findPlatillo = async (nombre: string) => 
-    await platilloRepo.findOne({ where: { nombre } });
-  
-  const findIngrediente = async (name: string) => 
-    await ingredienteRepo.findOne({ where: { name } });
+    // Ensalada de espinacas con quinoa
+    { platillo: 'Ensalada de espinacas con quinoa', ingrediente: 'Espinaca', cantidad: 100, unidad: 'g' },
+    { platillo: 'Ensalada de espinacas con quinoa', ingrediente: 'Quinoa', cantidad: 80, unidad: 'g' },
+    { platillo: 'Ensalada de espinacas con quinoa', ingrediente: 'Tomate', cantidad: 60, unidad: 'g' },
+    { platillo: 'Ensalada de espinacas con quinoa', ingrediente: 'Aguacate', cantidad: 50, unidad: 'g' },
 
-  // RECETA 1: Lentejas guisadas con arroz (8.1 mg hierro/porción)
-  const lentejas = await findPlatillo('Lentejas guisadas con arroz');
-  if (lentejas) {
-    const lentejasIng = await findIngrediente('Lentejas');
-    const arrozIng = await findIngrediente('Arroz integral');
-    const tomateIng = await findIngrediente('Tomate');
-    const cebollaIng = await findIngrediente('Cebolla');
+    // Tacos de carne con frijoles
+    { platillo: 'Tacos de carne con frijoles', ingrediente: 'Carne de res magra', cantidad: 120, unidad: 'g' },
+    { platillo: 'Tacos de carne con frijoles', ingrediente: 'Frijoles negros', cantidad: 100, unidad: 'g' },
+    { platillo: 'Tacos de carne con frijoles', ingrediente: 'Aguacate', cantidad: 40, unidad: 'g' },
 
-    if (lentejasIng && arrozIng && tomateIng && cebollaIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: lentejas, ingrediente: lentejasIng, cantidad: 150, unidad: 'g' },
-        { platillo: lentejas, ingrediente: arrozIng, cantidad: 100, unidad: 'g' },
-        { platillo: lentejas, ingrediente: tomateIng, cantidad: 50, unidad: 'g' },
-        { platillo: lentejas, ingrediente: cebollaIng, cantidad: 30, unidad: 'g' },
-      ] as any);
+    // Bowl de tofu con vegetales
+    { platillo: 'Bowl de tofu con vegetales', ingrediente: 'Tofu', cantidad: 150, unidad: 'g' },
+    { platillo: 'Bowl de tofu con vegetales', ingrediente: 'Brócoli', cantidad: 100, unidad: 'g' },
+    { platillo: 'Bowl de tofu con vegetales', ingrediente: 'Espinaca', cantidad: 50, unidad: 'g' },
+    { platillo: 'Bowl de tofu con vegetales', ingrediente: 'Quinoa', cantidad: 60, unidad: 'g' },
+
+    // Garbanzos al curry con arroz
+    { platillo: 'Garbanzos al curry con arroz', ingrediente: 'Garbanzos', cantidad: 150, unidad: 'g' },
+    { platillo: 'Garbanzos al curry con arroz', ingrediente: 'Arroz integral', cantidad: 100, unidad: 'g' },
+
+    // Avena con almendras y fresas
+    { platillo: 'Avena con almendras y fresas', ingrediente: 'Avena fortificada', cantidad: 60, unidad: 'g' },
+    { platillo: 'Avena con almendras y fresas', ingrediente: 'Almendras', cantidad: 30, unidad: 'g' },
+    { platillo: 'Avena con almendras y fresas', ingrediente: 'Fresa', cantidad: 80, unidad: 'g' },
+    { platillo: 'Avena con almendras y fresas', ingrediente: 'Naranja', cantidad: 50, unidad: 'g' },
+
+    // Pollo con brócoli y arroz
+    { platillo: 'Pollo con brócoli y arroz', ingrediente: 'Pollo', cantidad: 150, unidad: 'g' },
+    { platillo: 'Pollo con brócoli y arroz', ingrediente: 'Brócoli', cantidad: 100, unidad: 'g' },
+    { platillo: 'Pollo con brócoli y arroz', ingrediente: 'Arroz integral', cantidad: 100, unidad: 'g' },
+
+    // Ensalada de atún con huevo
+    { platillo: 'Ensalada de atún con huevo', ingrediente: 'Pescado (atún)', cantidad: 120, unidad: 'g' },
+    { platillo: 'Ensalada de atún con huevo', ingrediente: 'Huevo', cantidad: 50, unidad: 'g' },
+    { platillo: 'Ensalada de atún con huevo', ingrediente: 'Espinaca', cantidad: 80, unidad: 'g' },
+    { platillo: 'Ensalada de atún con huevo', ingrediente: 'Tomate', cantidad: 60, unidad: 'g' },
+
+    // Wrap de frijoles y aguacate
+    { platillo: 'Wrap de frijoles y aguacate', ingrediente: 'Frijoles negros', cantidad: 120, unidad: 'g' },
+    { platillo: 'Wrap de frijoles y aguacate', ingrediente: 'Aguacate', cantidad: 80, unidad: 'g' },
+    { platillo: 'Wrap de frijoles y aguacate', ingrediente: 'Tomate', cantidad: 50, unidad: 'g' },
+  ];
+
+  for (const rel of relaciones) {
+    const platillo = await platilloRepo.findOne({ where: { nombre: rel.platillo } });
+    const ingrediente = await ingredienteRepo.findOne({ where: { name: rel.ingrediente } });
+
+    if (platillo && ingrediente) {
+      const exists = await platilloIngredienteRepo.findOne({
+        where: {
+          platillo: { id: platillo.id },
+          ingrediente: { id: ingrediente.id },
+        },
+      });
+
+      if (!exists) {
+        await platilloIngredienteRepo.save(
+          platilloIngredienteRepo.create({
+            platillo,
+            ingrediente,
+            cantidad: rel.cantidad,
+            unidad: rel.unidad,
+          })
+        );
+      }
     }
   }
 
-  // RECETA 2: Hígado encebollado (17.6 mg hierro)
-  const higado = await findPlatillo('Hígado encebollado');
-  if (higado) {
-    const higadoIng = await findIngrediente('Hígado de res');
-    const cebollaIng = await findIngrediente('Cebolla');
-
-    if (higadoIng && cebollaIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: higado, ingrediente: higadoIng, cantidad: 200, unidad: 'g' },
-        { platillo: higado, ingrediente: cebollaIng, cantidad: 80, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 3: Ensalada de espinacas con quinoa
-  const ensaladaEspinaca = await findPlatillo('Ensalada de espinacas con quinoa');
-  if (ensaladaEspinaca) {
-    const espinacaIng = await findIngrediente('Espinaca');
-    const quinoaIng = await findIngrediente('Quinoa');
-    const tomateIng = await findIngrediente('Tomate');
-    const aguacateIng = await findIngrediente('Aguacate');
-
-    if (espinacaIng && quinoaIng && tomateIng && aguacateIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: ensaladaEspinaca, ingrediente: espinacaIng, cantidad: 100, unidad: 'g' },
-        { platillo: ensaladaEspinaca, ingrediente: quinoaIng, cantidad: 80, unidad: 'g' },
-        { platillo: ensaladaEspinaca, ingrediente: tomateIng, cantidad: 60, unidad: 'g' },
-        { platillo: ensaladaEspinaca, ingrediente: aguacateIng, cantidad: 50, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 4: Tacos de carne con frijoles
-  const tacos = await findPlatillo('Tacos de carne con frijoles');
-  if (tacos) {
-    const carneIng = await findIngrediente('Carne de res magra');
-    const frijolesIng = await findIngrediente('Frijoles negros');
-    const aguacateIng = await findIngrediente('Aguacate');
-
-    if (carneIng && frijolesIng && aguacateIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: tacos, ingrediente: carneIng, cantidad: 150, unidad: 'g' },
-        { platillo: tacos, ingrediente: frijolesIng, cantidad: 100, unidad: 'g' },
-        { platillo: tacos, ingrediente: aguacateIng, cantidad: 40, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 5: Bowl de tofu con vegetales
-  const bowlTofu = await findPlatillo('Bowl de tofu con vegetales');
-  if (bowlTofu) {
-    const tofuIng = await findIngrediente('Tofu');
-    const brocoliIng = await findIngrediente('Brócoli');
-    const espinacaIng = await findIngrediente('Espinaca');
-    const quinoaIng = await findIngrediente('Quinoa');
-
-    if (tofuIng && brocoliIng && espinacaIng && quinoaIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: bowlTofu, ingrediente: tofuIng, cantidad: 150, unidad: 'g' },
-        { platillo: bowlTofu, ingrediente: brocoliIng, cantidad: 100, unidad: 'g' },
-        { platillo: bowlTofu, ingrediente: espinacaIng, cantidad: 80, unidad: 'g' },
-        { platillo: bowlTofu, ingrediente: quinoaIng, cantidad: 60, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 6: Garbanzos al curry con arroz
-  const garbanzos = await findPlatillo('Garbanzos al curry con arroz');
-  if (garbanzos) {
-    const garbanzosIng = await findIngrediente('Garbanzos');
-    const arrozIng = await findIngrediente('Arroz integral');
-
-    if (garbanzosIng && arrozIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: garbanzos, ingrediente: garbanzosIng, cantidad: 150, unidad: 'g' },
-        { platillo: garbanzos, ingrediente: arrozIng, cantidad: 100, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 7: Avena con almendras y fresas
-  const avena = await findPlatillo('Avena con almendras y fresas');
-  if (avena) {
-    const avenaIng = await findIngrediente('Avena fortificada');
-    const almendrasIng = await findIngrediente('Almendras');
-    const fresaIng = await findIngrediente('Fresa');
-    const naranjaIng = await findIngrediente('Naranja');
-
-    if (avenaIng && almendrasIng && fresaIng && naranjaIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: avena, ingrediente: avenaIng, cantidad: 80, unidad: 'g' },
-        { platillo: avena, ingrediente: almendrasIng, cantidad: 30, unidad: 'g' },
-        { platillo: avena, ingrediente: fresaIng, cantidad: 60, unidad: 'g' },
-        { platillo: avena, ingrediente: naranjaIng, cantidad: 50, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 8: Pollo con brócoli y arroz
-  const pollo = await findPlatillo('Pollo con brócoli y arroz');
-  if (pollo) {
-    const polloIng = await findIngrediente('Pollo');
-    const brocoliIng = await findIngrediente('Brócoli');
-    const arrozIng = await findIngrediente('Arroz integral');
-
-    if (polloIng && brocoliIng && arrozIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: pollo, ingrediente: polloIng, cantidad: 150, unidad: 'g' },
-        { platillo: pollo, ingrediente: brocoliIng, cantidad: 100, unidad: 'g' },
-        { platillo: pollo, ingrediente: arrozIng, cantidad: 80, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 9: Ensalada de atún con huevo
-  const ensaladaAtun = await findPlatillo('Ensalada de atún con huevo');
-  if (ensaladaAtun) {
-    const atunIng = await findIngrediente('Pescado (atún)');
-    const huevoIng = await findIngrediente('Huevo');
-    const espinacaIng = await findIngrediente('Espinaca');
-    const tomateIng = await findIngrediente('Tomate');
-
-    if (atunIng && huevoIng && espinacaIng && tomateIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: ensaladaAtun, ingrediente: atunIng, cantidad: 150, unidad: 'g' },
-        { platillo: ensaladaAtun, ingrediente: huevoIng, cantidad: 100, unidad: 'g' },
-        { platillo: ensaladaAtun, ingrediente: espinacaIng, cantidad: 80, unidad: 'g' },
-        { platillo: ensaladaAtun, ingrediente: tomateIng, cantidad: 60, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  // RECETA 10: Wrap de frijoles y aguacate
-  const wrap = await findPlatillo('Wrap de frijoles y aguacate');
-  if (wrap) {
-    const panIng = await findIngrediente('Pan integral');
-    const frijolesIng = await findIngrediente('Frijoles negros');
-    const aguacateIng = await findIngrediente('Aguacate');
-    const quesoIng = await findIngrediente('Queso fresco');
-
-    if (panIng && frijolesIng && aguacateIng && quesoIng) {
-      await platilloIngredienteRepo.save([
-        { platillo: wrap, ingrediente: panIng, cantidad: 60, unidad: 'g' },
-        { platillo: wrap, ingrediente: frijolesIng, cantidad: 100, unidad: 'g' },
-        { platillo: wrap, ingrediente: aguacateIng, cantidad: 50, unidad: 'g' },
-        { platillo: wrap, ingrediente: quesoIng, cantidad: 30, unidad: 'g' },
-      ] as any);
-    }
-  }
-
-  console.log('✅ Relaciones platillo-ingrediente creadas con valores nutricionales reales.');
+  console.log('✓ Relaciones platillo-ingrediente creadas.');
 };

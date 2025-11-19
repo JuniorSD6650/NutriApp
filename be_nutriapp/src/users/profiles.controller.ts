@@ -126,21 +126,21 @@ export class ProfilesController {
     return this.medicoProfilesService.remove(id, confirm.name);
   }
 
-  // Asignación de pacientes a médicos
-  @Get('medicos/:id/pacientes')
-  @Roles(Role.ADMIN, Role.MEDICO)
-  async getPacientesDeMedico(@Param('id') id: string) {
-    const medico = await this.usersService.findMedicoWithPacientes(id);
-    if (!medico) return [];
-    return medico.pacientes?.map((p: any) => ({ id: p.id, name: p.name })) || [];
-  }
+  // ❌ ELIMINAR O COMENTAR ESTOS DOS ENDPOINTS (ya no aplican)
+  // @Get('medicos/:id/pacientes')
+  // @Roles(Role.ADMIN, Role.MEDICO)
+  // async getPacientesDeMedico(@Param('id') id: string) {
+  //   const medico = await this.usersService.findMedicoWithPacientes(id);
+  //   if (!medico) return [];
+  //   return medico.pacientes?.map((p: any) => ({ id: p.id, name: p.name })) || [];
+  // }
 
-  @Post('medicos/:medicoId/asignar-pacientes')
-  @Roles(Role.ADMIN, Role.MEDICO)
-  async asignarPacientesAMedico(
-    @Param('medicoId') medicoId: string,
-    @Body('pacienteIds') pacienteIds: string[]
-  ) {
-    return this.usersService.asignarPacientesAMedico(medicoId, pacienteIds);
-  }
+  // @Post('medicos/:medicoId/asignar-pacientes')
+  // @Roles(Role.ADMIN, Role.MEDICO)
+  // async asignarPacientesAMedico(
+  //   @Param('medicoId') medicoId: string,
+  //   @Body('pacienteIds') pacienteIds: string[]
+  // ) {
+  //   return this.usersService.asignarPacientesAMedico(medicoId, pacienteIds);
+  // }
 }

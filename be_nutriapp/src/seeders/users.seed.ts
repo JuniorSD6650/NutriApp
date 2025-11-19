@@ -7,10 +7,18 @@ const medicos = Array.from({ length: 5 }).map((_, i) => ({
   password: `medico${i+1}123`,
   name: `Dr. Nutri${i+1}`,
   role: Role.MEDICO,
-  _seedIndex: i, // para referencia
 }));
 
-const pacientes = Array.from({ length: 15 }).map((_, i) => ({
+// Tipo explícito para pacientes con medicoId
+type PacienteSeed = {
+  email: string;
+  password: string;
+  name: string;
+  role: Role;
+  medicoId?: number; // <-- AÑADIR CAMPO OPCIONAL
+};
+
+const pacientes: PacienteSeed[] = Array.from({ length: 15 }).map((_, i) => ({
   email: `paciente${i+1}@nutriapp.com`,
   password: `paciente${i+1}123`,
   name: `Paciente Demo${i+1}`,
