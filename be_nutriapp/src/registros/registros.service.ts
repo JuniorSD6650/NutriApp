@@ -10,7 +10,6 @@ import { Platillo } from '../platillos/entities/platillo.entity';
 
 @Injectable()
 export class RegistrosService {
-  private readonly DEBUG = process.env.DEBUG_MODE === 'true';
 
   constructor(
     @InjectRepository(RegistroConsumo)
@@ -65,11 +64,6 @@ export class RegistrosService {
     const startOfDay = new Date(`${fechaStr}T00:00:00.000Z`);
     const endOfDay = new Date(`${fechaStr}T23:59:59.999Z`);
 
-    if (this.DEBUG) {
-      console.log('🔍 Consultando registros para userId:', userId);
-      console.log('📅 Fecha:', fechaStr);
-    }
-
     const registros = await this.registroConsumoRepository.find({
       where: { 
         usuario: { id: userId }, 
@@ -85,10 +79,6 @@ export class RegistrosService {
       ],
       order: { fecha: 'ASC' },
     });
-
-    if (this.DEBUG) {
-      console.log('📊 Registros encontrados:', registros.length);
-    }
 
     let totalHierro = 0;
 
@@ -222,11 +212,6 @@ export class RegistrosService {
 
     const startOfPeriod = new Date(`${fechaInicioStr}T00:00:00.000Z`);
     const endOfPeriod = new Date(`${fechaFinStr}T23:59:59.999Z`);
-
-    if (this.DEBUG) {
-      console.log('📊 Consultando estadísticas de nutrientes para userId:', userId);
-      console.log('📅 Período:', fechaInicioStr, '-', fechaFinStr);
-    }
 
     // NUEVO: Obtener metas del período
     const metasRepo = this.registroConsumoRepository.manager.getRepository('MetaDiaria');

@@ -36,9 +36,6 @@ export class ProfilesService {
       throw new NotFoundException('Médico no encontrado');
     }
 
-    console.log('🔍 Médico encontrado:', medico.id, medico.email);
-    console.log('🔍 MedicoProfile ID:', medico.medicoProfile.id);
-
     // CORRECCIÓN: Agregar .select() para especificar los campos a cargar
     const pacientes = await this.userRepository
       .createQueryBuilder('user')
@@ -59,14 +56,11 @@ export class ProfilesService {
       .andWhere('medicoAsignado.id = :medicoProfileId', { medicoProfileId: medico.medicoProfile.id })
       .getMany();
 
-    console.log('👥 Pacientes encontrados:', pacientes.length);
-
     if (pacientes.length === 0) {
       console.warn('⚠️ No hay pacientes asignados a este médico');
     }
 
     return pacientes.map(paciente => {
-      console.log('📋 Procesando paciente:', paciente.id, paciente.name, paciente.email);
       return {
         id: paciente.id,
         name: paciente.name || 'Sin nombre',

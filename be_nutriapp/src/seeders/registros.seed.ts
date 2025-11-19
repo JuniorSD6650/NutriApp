@@ -10,20 +10,12 @@ export const registrosSeed = async (dataSource: DataSource) => {
   const userRepo = dataSource.getRepository(User);
   const platilloRepo = dataSource.getRepository(Platillo);
 
-  // ✅ ELIMINAR ESTA VALIDACIÓN (comentarla)
-  // const count = await registroRepo.count();
-  // if (count > 0) {
-  //   console.log(`⚠️ Ya existen ${count} registros. Omitiendo seeder de registros.`);
-  //   return;
-  // }
-
   const pacientes = await userRepo.find({ 
     where: { role: Role.PACIENTE },
-    take: 15 // Limitar a 15 pacientes
+    take: 15 
   });
   
   if (pacientes.length === 0) {
-    console.log('⚠️ No hay pacientes. Omitiendo seeder de registros.');
     return;
   }
 
@@ -37,12 +29,8 @@ export const registrosSeed = async (dataSource: DataSource) => {
   });
   
   if (platillos.length === 0) {
-    console.log('⚠️ No hay platillos disponibles para crear registros.');
     return;
   }
-
-  console.log(`📝 Creando registros para ${pacientes.length} paciente(s) desde 17/11/2025...`);
-  console.log(`📦 ${platillos.length} platillos disponibles`);
 
   const tiposComida = [TipoComida.DESAYUNO, TipoComida.ALMUERZO, TipoComida.CENA, TipoComida.SNACK];
   const diasAGenerar = 40;
@@ -108,9 +96,6 @@ export const registrosSeed = async (dataSource: DataSource) => {
       }
     }
 
-    console.log(`✅ ${totalRegistrosPaciente} registros creados para paciente: ${paciente.email}`);
   }
 
-  const totalRegistros = await registroRepo.count();
-  console.log(`✅ Total de registros en DB: ${totalRegistros}`);
 };

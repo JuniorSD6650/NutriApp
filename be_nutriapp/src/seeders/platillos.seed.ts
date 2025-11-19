@@ -21,7 +21,6 @@ export const platillosSeed = async (dataSource: DataSource) => {
     const exists = await platilloRepo.findOne({ where: { nombre: platilloData.nombre } });
     if (!exists) {
       await platilloRepo.save(platilloRepo.create(platilloData));
-      console.log(`✓ Platillo '${platilloData.nombre}' creado.`);
     }
   }
 };

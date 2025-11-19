@@ -16,11 +16,8 @@ export const metasSeed = async (dataSource: DataSource) => {
   const medicos = await userRepo.find({ where: { role: Role.MEDICO } });
 
   if (pacientes.length === 0 || medicos.length === 0) {
-    console.log('⚠️ No hay pacientes o médicos para crear metas.');
     return;
   }
-
-  console.log(`🎯 Creando metas diarias para ${pacientes.length} paciente(s) desde 17/11/2025...`);
 
   const fechaInicio = new Date('2025-11-17');
   const diasAGenerar = 40;
@@ -76,8 +73,6 @@ export const metasSeed = async (dataSource: DataSource) => {
       });
     }
 
-    console.log(`✅ Metas creadas para paciente: ${paciente.email}`);
   }
 
-  console.log('✅ Todas las metas han sido creadas exitosamente.');
 };

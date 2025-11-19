@@ -88,5 +88,4 @@ export const platilloIngredientesSeed = async (dataSource: DataSource) => {
     }
   }
 
-  console.log('✓ Relaciones platillo-ingrediente creadas.');
 };
