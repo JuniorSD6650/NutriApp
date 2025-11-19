@@ -55,23 +55,21 @@ export class UsersService {
 
 
     async findAll(query: QueryUserDto) {
-        const { page = 1, limit = 5, search, estado = FiltroEstado.ACTIVO } = query;
+        const { page = 1, limit = 10, role, name } = query;
         const skip = (page - 1) * limit;
+
         const where: any = {};
-        if (search) {
-            where.name = Like(`%${search}%`);
-        }
-        if (estado === FiltroEstado.ACTIVO) {
-            where.isActive = true;
-        } else if (estado === FiltroEstado.INACTIVO) {
-            where.isActive = false;
-        }
+        if (role) where.role = role;
+        if (name) where.name = Like(`%${name}%`);
+
         const [data, total] = await this.userRepository.findAndCount({
             where,
             take: limit,
             skip,
             order: { createdAt: 'DESC' },
+            select: ['id', 'name', 'email', 'role', 'isActive'], // Asegúrate de incluir `isActive`
         });
+
         return {
             data,
             total,

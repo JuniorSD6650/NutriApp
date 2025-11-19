@@ -88,4 +88,16 @@ class ApiService {
 
     return jsonDecode(response.body);
   }
+
+  // ✅ Método GET
+  Future<dynamic> get(String endpoint) async {
+    final response = await http.get(Uri.parse('$baseUrl$endpoint'), headers: headers);
+    return processResponse(response);
+  }
+
+  // ✅ Método DELETE
+  Future<void> delete(String endpoint) async {
+    final response = await http.delete(Uri.parse('$baseUrl$endpoint'), headers: headers);
+    processResponse(response);
+  }
 }
