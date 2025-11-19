@@ -1,9 +1,9 @@
 // lib/features/admin/widgets/admin_navigation_shell.dart
 import 'package:flutter/material.dart';
 import 'package:fe_nutriapp/features/admin/screens/admin_usuarios_screen.dart';
-import 'package:fe_nutriapp/features/admin/screens/admin_ingredientes_screen.dart';
+import 'package:fe_nutriapp/features/admin/screens/admin_ingredientes_nutrientes_screen.dart'; // <-- Cambiado para incluir Nutrientes
 import 'package:fe_nutriapp/features/admin/screens/admin_platillos_screen.dart';
-import 'package:fe_nutriapp/features/profile/profile_screen.dart'; // <-- Reutilizable
+import 'package:fe_nutriapp/features/profile/profile_screen.dart';
 
 class AdminNavigationShell extends StatefulWidget {
   const AdminNavigationShell({super.key});
@@ -17,9 +17,9 @@ class _AdminNavigationShellState extends State<AdminNavigationShell> {
 
   static const List<Widget> _screens = <Widget>[
     AdminUsuariosScreen(),
-    AdminIngredientesScreen(),
+    AdminIngredientesNutrientesScreen(), // <-- Cambiado para incluir Nutrientes
     AdminPlatillosScreen(),
-    ProfileScreen(), // <-- Vista reutilizable
+    ProfileScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -38,7 +38,7 @@ class _AdminNavigationShellState extends State<AdminNavigationShell> {
         type: BottomNavigationBarType.fixed,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.people_alt), label: 'Usuarios'),
-          BottomNavigationBarItem(icon: Icon(Icons.spa), label: 'Ingredientes'),
+          BottomNavigationBarItem(icon: Icon(Icons.spa), label: 'Ingredientes'), // <-- Cambiado para incluir Nutrientes
           BottomNavigationBarItem(icon: Icon(Icons.restaurant), label: 'Platillos'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Perfil'),
         ],

@@ -28,4 +28,30 @@ class NutriAppApi {
   set onTokenExpired(VoidCallback? callback) {
     _apiService.onTokenExpired = callback;
   }
+
+  Future<Map<String, dynamic>> getNutrientes({
+    required int page,
+    String? name,
+  }) async {
+    final queryParams = {
+      'page': page.toString(),
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+    };
+
+    final uri = Uri.parse('/nutrientes').replace(queryParameters: queryParams);
+    return await _apiService.get(uri.toString()) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getIngredientes({
+    required int page,
+    String? name,
+  }) async {
+    final queryParams = {
+      'page': page.toString(),
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+    };
+
+    final uri = Uri.parse('/ingredientes').replace(queryParameters: queryParams);
+    return await _apiService.get(uri.toString()) as Map<String, dynamic>;
+  }
 }

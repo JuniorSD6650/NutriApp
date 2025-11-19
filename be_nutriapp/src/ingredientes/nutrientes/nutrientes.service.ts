@@ -3,10 +3,10 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
-  BadRequestException
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like, IsNull, Not } from 'typeorm'; // <-- Importar IsNull, Not
+import { Repository, Like, IsNull, Not } from 'typeorm';
 import { Nutriente } from '../entities/nutriente.entity';
 import { CreateNutrienteDto } from './dto/create-nutriente.dto';
 import { UpdateNutrienteDto } from './dto/update-nutriente.dto';
@@ -37,18 +37,20 @@ export class NutrientesService {
       page = 1,
       limit = 5,
       search,
-      estado = FiltroEstado.ACTIVO // Default
+      name, // Asegúrate de incluir el parámetro `name`
+      estado = FiltroEstado.ACTIVO, // Default
     } = queryNutrienteDto;
 
     const skip = (page - 1) * limit;
 
     const where: any = {};
 
-    if (search) {
-      where.name = Like(`%${search}%`);
+    // ✅ Asegúrate de que el filtro por nombre funcione correctamente
+    if (name && name.trim().length > 0) {
+      where.name = Like(`%${name.trim()}%`); // Aplica el filtro por nombre
     }
 
-    // Lógica de Filtro de Estado
+    // Filtro de estado
     if (estado === FiltroEstado.ACTIVO) {
       where.deletedAt = IsNull();
     } else if (estado === FiltroEstado.INACTIVO) {
@@ -56,13 +58,13 @@ export class NutrientesService {
     }
 
     const [data, total] = await this.nutrienteRepository.findAndCount({
-      where: where,
-      withDeleted: (estado !== FiltroEstado.ACTIVO), // Incluir borrados si se piden
+      where,
+      withDeleted: estado !== FiltroEstado.ACTIVO, // Incluir borrados si se piden
       take: limit,
       skip: skip,
       order: {
-        createdAt: 'DESC' // Ordenar por creación, el más nuevo primero
-      }
+        createdAt: 'DESC', // Ordenar por creación, el más nuevo primero
+      },
     });
 
     return {

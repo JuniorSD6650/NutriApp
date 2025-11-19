@@ -67,15 +67,21 @@ export class IngredientesService {
     const {
       page = 1,
       limit = 5,
+      name, // El parámetro `name` ahora está definido en el DTO
       search,
-      estado = FiltroEstado.ACTIVO
+      estado = FiltroEstado.ACTIVO,
     } = queryIngredienteDto;
 
     const skip = (page - 1) * limit;
+
     const where: any = {};
 
-    if (search) {
-      where.name = Like(`%${search}%`);
+    if (name && name.trim().length > 0) {
+      where.name = Like(`%${name.trim()}%`);
+    }
+
+    if (search && search.trim().length > 0) {
+      where.name = Like(`%${search.trim()}%`);
     }
 
     if (estado === FiltroEstado.ACTIVO) {
@@ -85,14 +91,14 @@ export class IngredientesService {
     }
 
     const [data, total] = await this.ingredienteRepository.findAndCount({
-      where: where,
-      withDeleted: (estado !== FiltroEstado.ACTIVO),
+      where,
+      withDeleted: estado !== FiltroEstado.ACTIVO,
       relations: ['nutrientes', 'nutrientes.nutriente'],
       take: limit,
-      skip: skip,
+      skip,
       order: {
-        createdAt: 'DESC' // Ordenar por creación, el más nuevo primero
-      }
+        createdAt: 'DESC',
+      },
     });
 
     return {

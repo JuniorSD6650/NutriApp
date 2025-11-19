@@ -1,15 +1,18 @@
 // src/ingredientes/dto/query-ingrediente.dto.ts
 import { IsOptional, IsString, IsEnum } from 'class-validator';
 import { PaginationDto } from '../../common/dto/pagination.dto';
-import { FiltroEstado } from '../../common/enums/filtro-estado.enum'; // <-- IMPORTAR
+import { FiltroEstado } from '../../common/enums/filtro-estado.enum';
 
 export class QueryIngredienteDto extends PaginationDto {
-  
+  @IsOptional()
+  @IsString()
+  name?: string;
+
   @IsOptional()
   @IsString()
   search?: string;
 
   @IsOptional()
   @IsEnum(FiltroEstado)
-  estado: FiltroEstado = FiltroEstado.ACTIVO; 
+  estado?: FiltroEstado;
 }

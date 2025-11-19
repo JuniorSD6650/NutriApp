@@ -1,45 +1,70 @@
 // lib/features/admin/screens/admin_ingredientes_screen.dart
 import 'package:flutter/material.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
+import 'package:provider/provider.dart';
+import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
 
 class AdminIngredientesScreen extends StatefulWidget {
   const AdminIngredientesScreen({super.key});
 
   @override
-  State<AdminIngredientesScreen> createState() =>
-      _AdminIngredientesScreenState();
+  State<AdminIngredientesScreen> createState() => _AdminIngredientesScreenState();
 }
 
-class _AdminIngredientesScreenState extends State<AdminIngredientesScreen>
-    with SingleTickerProviderStateMixin {
-  // TabBarController para cambiar entre Ingredientes y Nutrientes
-  late TabController _tabController;
+class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
+  bool _isLoading = true;
+  String? _errorMessage;
+  List<dynamic> _ingredientes = [];
+  int _currentPage = 1;
+  int _totalPages = 1;
+  String? _searchName;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _fetchIngredientes();
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  Future<void> _fetchIngredientes() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final api = context.read<NutriAppApi>();
+      final response = await api.admin.getIngredientes(
+        page: _currentPage,
+        name: _searchName,
+      );
+
+      setState(() {
+        _ingredientes = response['data'];
+        _currentPage = int.tryParse(response['page'].toString()) ?? 1;
+        _totalPages = int.tryParse(response['totalPages'].toString()) ?? 1;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString().replaceFirst('Exception: ', '');
+        _isLoading = false;
+      });
+    }
   }
 
-  // Lógica dummy para Nutrientes
-  final List<Map<String, String>> dummyNutrients = [
-    {'name': 'Hierro', 'unit': 'mg', 'id': 'n1'},
-    {'name': 'Calorías', 'unit': 'kcal', 'id': 'n2'},
-    {'name': 'Proteínas', 'unit': 'g', 'id': 'n3'},
-  ];
+  void _changePage(int direction) {
+    setState(() {
+      _currentPage += direction;
+    });
+    _fetchIngredientes();
+  }
 
-  // Lógica dummy para Ingredientes
-  final List<Map<String, dynamic>> dummyIngredients = [
-    {'name': 'Lenteja', 'status': true, 'id': 'i1'},
-    {'name': 'Avena', 'status': true, 'id': 'i2'},
-    {'name': 'Espinaca', 'status': false, 'id': 'i3'},
-  ];
+  void _applyFilters() {
+    setState(() {
+      _currentPage = 1;
+    });
+    _fetchIngredientes();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,151 +72,109 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Datos Maestros'),
-        elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: theme.textTheme.bodyLarge?.color,
-          indicatorColor: AppColors.primary,
-          tabs: const [Tab(text: 'Ingredientes'), Tab(text: 'Nutrientes')],
-        ),
+        title: const Text('Gestión de Ingredientes'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add),
+            onPressed: () {
+              // TODO: Navegar a AdminIngredientesFormScreen para crear nuevo ingrediente
+            },
+          ),
+        ],
       ),
-
-      // Botón flotante para añadir (la acción depende de la pestaña)
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // TODO: Abrir formulario para añadir Ingrediente o Nutriente
-          if (_tabController.index == 0) {
-            // Acción: Añadir Ingrediente
-          } else {
-            // Acción: Añadir Nutriente
-          }
-        },
-        child: const Icon(Icons.add),
-      ),
-
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          // PESTAÑA 1: INGREDIENTES
-          _buildIngredientsList(context),
-
-          // PESTAÑA 2: NUTRIENTES
-          _buildNutrientsList(context),
+          _buildFilters(theme),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                    ? Center(
+                        child: Text(
+                          'Error: $_errorMessage',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      )
+                    : _buildIngredientesTable(context, theme),
+          ),
+          _buildPaginationControls(),
         ],
       ),
     );
   }
 
-  // --- WIDGETS DE PESTAÑA ---
-
-  Widget _buildIngredientsList(BuildContext context) {
-    // Datos dummy: Asumimos que esta lista es la fuente de datos (GET /ingredientes)
-    final theme = Theme.of(context);
-
-    final List<Map<String, dynamic>> dummyIngredients = [
-      {'name': 'Lenteja', 'status': true, 'id': 'i1'},
-      {'name': 'Avena', 'status': true, 'id': 'i2'},
-      {'name': 'Espinaca', 'status': false, 'id': 'i3'},
-    ];
-
-    return ListView(
-      children: [
-        ...dummyIngredients.map((ing) {
-          return ListTile(
-            leading: const Icon(Icons.spa),
-            // CORRECCIÓN 1: Asegurar que el valor sea String
-            title: Text(
-              ing['name'] as String? ?? 'Error: Name',
-              style: theme.textTheme.titleMedium,
-            ),
-            subtitle: const Text('4 nutrientes asociados'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  ing['status'] ? Icons.check : Icons.close,
-                  color: ing['status'] ? Colors.green : Colors.red,
-                  size: 18,
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: PATCH /ingredientes/:id
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: DELETE /ingredientes/:id (soft delete)
-                  },
-                ),
-              ],
-            ),
-          );
-        }).toList(),
-
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            '// Lógica: Carga la lista paginada de Ingredientes (GET /ingredientes?page=...).',
-            style: theme.textTheme.bodySmall,
-          ),
+  Widget _buildFilters(ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: TextField(
+        decoration: const InputDecoration(
+          labelText: 'Buscar por nombre',
+          border: OutlineInputBorder(),
         ),
-      ],
+        onChanged: (value) {
+          _searchName = value.isEmpty ? null : value;
+        },
+      ),
     );
   }
 
-  Widget _buildNutrientsList(BuildContext context) {
-    // Datos dummy: Asumimos que esta lista es la fuente de datos (GET /nutrientes)
-    final theme = Theme.of(context);
+  Widget _buildIngredientesTable(BuildContext context, ThemeData theme) {
+    return SingleChildScrollView(
+      child: DataTable(
+        columnSpacing: 18,
+        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
+        columns: const [
+          DataColumn(label: Text('Nombre')),
+          DataColumn(label: Text('Nutrientes')),
+          DataColumn(label: Text('Acciones')),
+        ],
+        rows: _ingredientes.map((ingrediente) {
+          final nutrientes = ingrediente['nutrientes']
+              .map((n) => '${n['name']} (${n['value_per_100g']} ${n['unit']})')
+              .join(', ');
 
-    final List<Map<String, String>> dummyNutrients = [
-      {'name': 'Hierro', 'unit': 'mg', 'id': 'n1'},
-      {'name': 'Calorías', 'unit': 'kcal', 'id': 'n2'},
-      {'name': 'Proteínas', 'unit': 'g', 'id': 'n3'},
-    ];
-
-    return ListView(
-      children: [
-        ...dummyNutrients.map((nut) {
-          return ListTile(
-            leading: const Icon(Icons.science),
-            // CORRECCIÓN 2: Asegurar que el valor sea String y manejar nulos
-            title: Text(
-              nut['name'] as String? ?? 'Error: Name',
-              style: theme.textTheme.titleMedium,
-            ),
-            subtitle: Text('Unidad: ${nut['unit']}'),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
+          return DataRow(cells: [
+            DataCell(Text(ingrediente['name'] ?? 'Sin nombre')),
+            DataCell(Text(nutrientes.isNotEmpty ? nutrientes : 'Sin nutrientes')),
+            DataCell(Row(
               children: [
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
                   onPressed: () {
-                    // TODO: PATCH /nutrientes/:id
+                    // TODO: Navegar a AdminIngredientesFormScreen para editar ingrediente
                   },
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete, size: 20, color: Colors.red),
                   onPressed: () {
-                    // TODO: POST /nutrientes/:id/force-delete
+                    // TODO: Eliminar ingrediente
                   },
                 ),
               ],
-            ),
-          );
+            )),
+          ]);
         }).toList(),
+      ),
+    );
+  }
 
-        Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Text(
-            '// Lógica: Carga la lista de Nutrientes (GET /nutrientes).',
-            style: Theme.of(context).textTheme.bodySmall,
+  Widget _buildPaginationControls() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left),
+            onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
           ),
-        ),
-      ],
+          Text('Página $_currentPage de $_totalPages'),
+          IconButton(
+            icon: const Icon(Icons.chevron_right),
+            onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+          ),
+        ],
+      ),
     );
   }
 }
