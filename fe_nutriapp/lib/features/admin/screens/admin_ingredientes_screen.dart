@@ -120,6 +120,7 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
 
   Widget _buildIngredientesTable(BuildContext context, ThemeData theme) {
     return SingleChildScrollView(
+      scrollDirection: Axis.horizontal, // Permite desplazamiento horizontal
       child: DataTable(
         columnSpacing: 18,
         headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
