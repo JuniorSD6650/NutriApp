@@ -6,11 +6,10 @@ import 'package:fe_nutriapp/features/profile/screens/change_password_screen.dart
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/theme/theme_provider.dart';
-// 1. IMPORTAR EL SERVICIO DE NOTIFICACIONES
 import 'package:fe_nutriapp/core/services/notification_service.dart';
-import 'package:permission_handler/permission_handler.dart'; // <-- AÑADIR IMPORT
 import 'package:fe_nutriapp/core/models/meal_time.dart';
 import 'package:fe_nutriapp/features/profile/screens/meal_times_screen.dart';
+import 'package:fe_nutriapp/core/services/auth_service.dart';
 import 'dart:convert';
 
 class SettingsScreen extends StatefulWidget {
@@ -41,7 +40,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         final List<dynamic> jsonList = jsonDecode(jsonString);
         _mealTimes = jsonList.map((json) => MealTime.fromJson(json)).toList();
       } else {
-        // Valores por defecto
         _mealTimes = [
           MealTime(id: '1', hour: 7, minute: 0, label: 'Desayuno'),
           MealTime(id: '2', hour: 13, minute: 0, label: 'Almuerzo'),
@@ -52,7 +50,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
   }
 
-  // --- 2. LÓGICA REAL DE NOTIFICACIONES (MODIFICADO) ---
   Future<void> _saveNotificationPreference(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notifications', value);
@@ -61,7 +58,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final notificationService = context.read<NotificationService>();
 
     if (value) {
-      // Solo pedir permisos y activar la notificación diaria
       print("Activando recordatorios de comidas...");
       await notificationService.requestPermissions();
       await notificationService.scheduleMultipleMealReminders(_mealTimes);
@@ -75,18 +71,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final themeProvider = context.watch<ThemeProvider>();
+    
+    // ✅ Obtener el rol del usuario
+    final authService = context.watch<AuthService>();
+    final userRole = authService.userRole?.toLowerCase();
+    final isPaciente = userRole == 'paciente';
 
     return Scaffold(
       appBar: AppBar(title: const Text('Ajustes')),
       body: ListView(
         children: [
           _buildSectionTitle(context, 'Notificaciones'),
+          
+          // ✅ Switch general de notificaciones (para todos los roles)
           SwitchListTile(
             title: Text('Habilitar notificaciones', style: theme.textTheme.titleMedium),
             subtitle: Text(
               _notificationsEnabled 
-                ? '${_mealTimes.length} recordatorios activos' 
-                : 'Sin recordatorios',
+                ? isPaciente 
+                  ? '${_mealTimes.length} recordatorios activos' 
+                  : 'Notificaciones activadas'
+                : 'Sin notificaciones',
               style: theme.textTheme.bodyMedium
             ),
             value: _notificationsEnabled,
@@ -97,12 +102,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             secondary: Icon(Icons.notifications, color: theme.colorScheme.primary),
           ),
           
-          // Botón para configurar horarios
-          if (_notificationsEnabled)
+          // ✅ CAMBIO: Configuración de horarios de comida (SOLO para pacientes)
+          if (isPaciente && _notificationsEnabled)
             ListTile(
               leading: Icon(Icons.schedule, color: theme.colorScheme.primary),
-              title: Text('Configurar horarios', style: theme.textTheme.titleMedium),
-              subtitle: Text('${_mealTimes.length} horarios de comida', style: theme.textTheme.bodySmall),
+              title: Text('Configurar horarios de comida', style: theme.textTheme.titleMedium),
+              subtitle: Text('${_mealTimes.length} horarios configurados', style: theme.textTheme.bodySmall),
               trailing: Icon(Icons.chevron_right, color: AppColors.textSecondary),
               onTap: () async {
                 await Navigator.push(
@@ -113,7 +118,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         setState(() {
                           _mealTimes = updatedTimes;
                         });
-                        // Reprogramar notificaciones
                         context.read<NotificationService>().scheduleMultipleMealReminders(updatedTimes);
                       },
                     ),
