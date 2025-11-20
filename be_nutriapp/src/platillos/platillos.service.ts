@@ -55,53 +55,61 @@ export class PlatillosService {
   }
 
   async findAll(query: QueryPlatilloDto) {
-    const { page = 1, limit = 5, search, estado = FiltroEstado.ACTIVO } = query;
+    const { page = 1, limit = 5, name, estado = FiltroEstado.ACTIVO } = query;
+
     const skip = (page - 1) * limit;
     const where: any = {};
-    if (search) where.nombre = Like(`%${search}%`);
-    if (estado === FiltroEstado.ACTIVO) where.deletedAt = IsNull();
-    else if (estado === FiltroEstado.INACTIVO) where.deletedAt = Not(IsNull());
+
+    // ✅ Cambia `search` por `name`
+    if (name && name.trim().length > 0) {
+      where.nombre = Like(`%${name.trim()}%`);
+    }
+
+    if (estado === FiltroEstado.ACTIVO) {
+      where.deletedAt = IsNull();
+    } else if (estado === FiltroEstado.INACTIVO) {
+      where.deletedAt = Not(IsNull());
+    }
+
     const [data, total] = await this.platilloRepository.findAndCount({
       where,
-      withDeleted: (estado !== FiltroEstado.ACTIVO),
+      withDeleted: estado !== FiltroEstado.ACTIVO,
       relations: ['ingredientes', 'ingredientes.ingrediente'],
       take: limit,
       skip,
       order: { createdAt: 'DESC' },
     });
+
     return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string, includeInactive = false) {
     const where: any = { id };
     if (!includeInactive) where.deletedAt = IsNull();
+
     const platillo = await this.platilloRepository.findOne({
       where,
       withDeleted: includeInactive,
-      relations: ['ingredientes', 'ingredientes.ingrediente', 'ingredientes.ingrediente.nutrientes', 'ingredientes.ingrediente.nutrientes.nutriente'],
+      relations: ['ingredientes', 'ingredientes.ingrediente'],
     });
-    if (!platillo) throw new NotFoundException(`Platillo con ID ${id} no encontrado`);
 
-    // Calcular nutrientes totales
-    const nutrientesTotales: Record<string, number> = {};
-    for (const pi of platillo.ingredientes) {
-      const ingrediente = pi.ingrediente;
-      if (!ingrediente.nutrientes) continue;
-      for (const ingNut of ingrediente.nutrientes) {
-        const nombreNutriente = ingNut.nutriente?.name;
-        if (!nombreNutriente) continue;
-        // Proporción: (cantidad usada * valor por 100g) / 100, usando float
-        const cantidad = typeof pi.cantidad === 'string' ? Number(pi.cantidad) : pi.cantidad;
-        const valorPor100g = typeof ingNut.value_per_100g === 'string' ? Number(ingNut.value_per_100g) : ingNut.value_per_100g;
-        const aporte = (cantidad * valorPor100g) / 100;
-        if (!nutrientesTotales[nombreNutriente]) nutrientesTotales[nombreNutriente] = 0;
-        nutrientesTotales[nombreNutriente] += aporte;
-      }
+    if (!platillo) {
+      throw new NotFoundException(`Platillo con ID ${id} no encontrado`);
     }
+
+    // Calcular el total de ingredientes para el gráfico
+    const totalCantidad = platillo.ingredientes.reduce((sum, pi) => sum + pi.cantidad, 0);
+
+    const ingredientesDetalle = platillo.ingredientes.map((pi) => ({
+      ingredienteId: pi.ingrediente.id, // ✅ AÑADIR ESTE CAMPO
+      nombre: pi.ingrediente.name,
+      cantidad: pi.cantidad,
+      porcentaje: (pi.cantidad / totalCantidad) * 100,
+    }));
 
     return {
       ...platillo,
-      nutrientesTotales,
+      ingredientesDetalle,
     };
   }
 
@@ -164,5 +172,51 @@ export class PlatillosService {
     }
     await this.platilloRepository.remove(platillo);
     return { message: `Platillo ${platillo.nombre} y sus relaciones han sido eliminados permanentemente.` };
+  }
+
+  async addIngrediente(
+    platilloId: string,
+    dto: { ingredienteId: string; cantidad: number; unidad?: string }
+  ) {
+    return await this.dataSource.transaction(async manager => {
+      const platillo = await manager.findOne(Platillo, {
+        where: { id: platilloId },
+        relations: ['ingredientes'],
+      });
+      if (!platillo) throw new NotFoundException(`Platillo con ID ${platilloId} no encontrado`);
+
+      const ingrediente = await manager.findOne(Ingrediente, {
+        where: { id: dto.ingredienteId },
+      });
+      if (!ingrediente) throw new NotFoundException(`Ingrediente con ID ${dto.ingredienteId} no encontrado`);
+
+      const platilloIngrediente = manager.create(PlatilloIngrediente, {
+        platillo,
+        ingrediente,
+        cantidad: dto.cantidad,
+        unidad: dto.unidad || 'g',
+      });
+
+      await manager.save(PlatilloIngrediente, platilloIngrediente);
+      return this.findOne(platilloId);
+    });
+  }
+
+  async removeIngrediente(platilloId: string, ingredienteId: string) {
+    return await this.dataSource.transaction(async manager => {
+      const platilloIngrediente = await manager.findOne(PlatilloIngrediente, {
+        where: {
+          platillo: { id: platilloId },
+          ingrediente: { id: ingredienteId },
+        },
+      });
+
+      if (!platilloIngrediente) {
+        throw new NotFoundException('El ingrediente no está en este platillo');
+      }
+
+      await manager.remove(PlatilloIngrediente, platilloIngrediente);
+      return this.findOne(platilloId);
+    });
   }
 }

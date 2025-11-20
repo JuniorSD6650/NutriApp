@@ -37,6 +37,12 @@ class AdminApi {
     return await _apiService.get(uri.toString()) as Map<String, dynamic>;
   }
 
+  // ✅ NUEVO: Obtener TODOS los ingredientes sin paginación
+  Future<List<dynamic>> getAllIngredientes() async {
+    final response = await _apiService.get('/ingredientes?limit=1000') as Map<String, dynamic>;
+    return response['data'] as List<dynamic>;
+  }
+
   Future<Map<String, dynamic>> getNutrientes({
     int page = 1,
     String? name,
@@ -48,5 +54,46 @@ class AdminApi {
 
     final uri = Uri.parse('/nutrientes').replace(queryParameters: queryParams);
     return await _apiService.get(uri.toString()) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getPlatillos({
+    int page = 1,
+    String? name,
+  }) async {
+    final queryParams = {
+      'page': page.toString(),
+      if (name != null) 'name': name,
+    };
+
+    final uri = Uri.parse('/platillos').replace(queryParameters: queryParams);
+    return await _apiService.get(uri.toString()) as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getPlatilloById(String platilloId) async {
+    final response = await _apiService.get('/platillos/$platilloId');
+    return response as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addIngredienteToPlatillo(
+    String platilloId,
+    String ingredienteId,
+    double cantidad,
+    String unidad,
+  ) async {
+    final body = {
+      'ingredienteId': ingredienteId,
+      'cantidad': cantidad,
+      'unidad': unidad,
+    };
+    final response = await _apiService.post('/platillos/$platilloId/ingredientes', body);
+    return response as Map<String, dynamic>;
+  }
+
+  // ✅ CORRECCIÓN: No esperar Map en el retorno
+  Future<void> removeIngredienteFromPlatillo(
+    String platilloId,
+    String ingredienteId,
+  ) async {
+    await _apiService.delete('/platillos/$platilloId/ingredientes/$ingredienteId');
   }
 }

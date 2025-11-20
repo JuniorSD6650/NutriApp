@@ -100,4 +100,14 @@ class ApiService {
     final response = await http.delete(Uri.parse('$baseUrl$endpoint'), headers: headers);
     processResponse(response);
   }
+
+  // ✅ Método POST
+  Future<dynamic> post(String endpoint, Map<String, dynamic> body) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl$endpoint'),
+      headers: headers,
+      body: jsonEncode(body),
+    );
+    return processResponse(response);
+  }
 }

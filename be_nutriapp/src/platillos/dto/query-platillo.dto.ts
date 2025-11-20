@@ -5,9 +5,9 @@ import { FiltroEstado } from '../../common/enums/filtro-estado.enum';
 export class QueryPlatilloDto extends PaginationDto {
   @IsOptional()
   @IsString()
-  search?: string;
+  name?: string; // Cambia el nombre del parámetro de `search` a `name`
 
   @IsOptional()
   @IsEnum(FiltroEstado)
-  estado: FiltroEstado = FiltroEstado.ACTIVO;
+  estado?: FiltroEstado;
 }

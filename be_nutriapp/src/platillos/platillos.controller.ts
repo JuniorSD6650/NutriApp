@@ -59,4 +59,24 @@ export class PlatillosController {
   ) {
     return this.platillosService.remove(id, confirmDeleteDto.name);
   }
+
+  // ✅ NUEVO: Agregar ingrediente a platillo
+  @Post(':id/ingredientes')
+  @Roles(Role.ADMIN)
+  async addIngrediente(
+    @Param('id') id: string,
+    @Body() dto: { ingredienteId: string; cantidad: number; unidad?: string }
+  ) {
+    return this.platillosService.addIngrediente(id, dto);
+  }
+
+  // ✅ NUEVO: Eliminar ingrediente de platillo
+  @Delete(':id/ingredientes/:ingredienteId')
+  @Roles(Role.ADMIN)
+  async removeIngrediente(
+    @Param('id') platilloId: string,
+    @Param('ingredienteId') ingredienteId: string
+  ) {
+    return this.platillosService.removeIngrediente(platilloId, ingredienteId);
+  }
 }
