@@ -163,45 +163,50 @@ class _IngredientesViewState extends State<_IngredientesView> {
   }
 
   Widget _buildIngredientesTable(BuildContext context, ThemeData theme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal, // Permite desplazamiento horizontal
-      child: DataTable(
-        columnSpacing: 18,
-        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
-        columns: const [
-          DataColumn(label: Text('Nombre')),
-          DataColumn(label: Text('Nutrientes')),
-          DataColumn(label: Text('Acciones')),
-        ],
-        rows: _ingredientes.map((ingrediente) {
-          return DataRow(cells: [
-            DataCell(Text(ingrediente['name'] ?? 'Sin nombre')),
-            DataCell(
-              IconButton(
-                icon: const Icon(Icons.visibility, color: AppColors.primary),
-                onPressed: () {
-                  _showNutrientesModal(context, ingrediente);
-                },
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: screenWidth, // Asegura que la tabla ocupe todo el ancho de la pantalla
+        child: DataTable(
+          columnSpacing: 18,
+          headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
+          columns: const [
+            DataColumn(label: Expanded(child: Text('Nombre'))),
+            DataColumn(label: Expanded(child: Text('Nutrientes'))),
+            DataColumn(label: Expanded(child: Text('Acciones'))),
+          ],
+          rows: _ingredientes.map((ingrediente) {
+            return DataRow(cells: [
+              DataCell(Text(ingrediente['name'] ?? 'Sin nombre')),
+              DataCell(
+                IconButton(
+                  icon: const Icon(Icons.visibility, color: AppColors.primary),
+                  onPressed: () {
+                    _showNutrientesModal(context, ingrediente);
+                  },
+                ),
               ),
-            ),
-            DataCell(Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: Implementar edición
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Implementar eliminación
-                  },
-                ),
-              ],
-            )),
-          ]);
-        }).toList(),
+              DataCell(Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () {
+                      // TODO: Implementar edición
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () {
+                      // TODO: Implementar eliminación
+                    },
+                  ),
+                ],
+              )),
+            ]);
+          }).toList(),
+        ),
       ),
     );
   }
@@ -372,38 +377,43 @@ class _NutrientesViewState extends State<_NutrientesView> {
   }
 
   Widget _buildNutrientesTable(BuildContext context, ThemeData theme) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
     return SingleChildScrollView(
-      scrollDirection: Axis.horizontal, // Permite desplazamiento horizontal
-      child: DataTable(
-        columnSpacing: 18,
-        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
-        columns: const [
-          DataColumn(label: Text('Nombre')),
-          DataColumn(label: Text('Unidad')),
-          DataColumn(label: Text('Acciones')),
-        ],
-        rows: _nutrientes.map((nutriente) {
-          return DataRow(cells: [
-            DataCell(Text(nutriente['name'] ?? 'Sin nombre')),
-            DataCell(Text(nutriente['unit'] ?? 'Sin unidad')),
-            DataCell(Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: Implementar edición
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Implementar eliminación
-                  },
-                ),
-              ],
-            )),
-          ]);
-        }).toList(),
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: screenWidth, // Asegura que la tabla ocupe todo el ancho de la pantalla
+        child: DataTable(
+          columnSpacing: 18,
+          headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
+          columns: const [
+            DataColumn(label: Expanded(child: Text('Nombre'))),
+            DataColumn(label: Expanded(child: Text('Unidad'))),
+            DataColumn(label: Expanded(child: Text('Acciones'))),
+          ],
+          rows: _nutrientes.map((nutriente) {
+            return DataRow(cells: [
+              DataCell(Text(nutriente['name'] ?? 'Sin nombre')),
+              DataCell(Text(nutriente['unit'] ?? 'Sin unidad')),
+              DataCell(Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () {
+                      // TODO: Implementar edición
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () {
+                      // TODO: Implementar eliminación
+                    },
+                  ),
+                ],
+              )),
+            ]);
+          }).toList(),
+        ),
       ),
     );
   }

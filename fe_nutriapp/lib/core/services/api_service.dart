@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 class ApiService {
-  final String baseUrl = "https://9ff96a4b80a3.ngrok-free.app";
+  final String baseUrl = "https://20535e1bb5e0.ngrok-free.app";
   
   final Map<String, String> _ngrokHeaders = {
     'ngrok-skip-browser-warning': 'true',

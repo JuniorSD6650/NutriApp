@@ -119,42 +119,47 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
   }
 
   Widget _buildIngredientesTable(BuildContext context, ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal, // Permite desplazamiento horizontal
-      child: DataTable(
-        columnSpacing: 18,
-        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
-        columns: const [
-          DataColumn(label: Text('Nombre')),
-          DataColumn(label: Text('Nutrientes')),
-          DataColumn(label: Text('Acciones')),
-        ],
-        rows: _ingredientes.map((ingrediente) {
-          final nutrientes = ingrediente['nutrientes']
-              .map((n) => '${n['name']} (${n['value_per_100g']} ${n['unit']})')
-              .join(', ');
+    final screenWidth = MediaQuery.of(context).size.width;
 
-          return DataRow(cells: [
-            DataCell(Text(ingrediente['name'] ?? 'Sin nombre')),
-            DataCell(Text(nutrientes.isNotEmpty ? nutrientes : 'Sin nutrientes')),
-            DataCell(Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: Navegar a AdminIngredientesFormScreen para editar ingrediente
-                  },
-                ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Eliminar ingrediente
-                  },
-                ),
-              ],
-            )),
-          ]);
-        }).toList(),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: screenWidth, // Asegura que la tabla ocupe todo el ancho de la pantalla
+        child: DataTable(
+          columnSpacing: 18,
+          headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
+          columns: const [
+            DataColumn(label: Expanded(child: Text('Nombre'))),
+            DataColumn(label: Expanded(child: Text('Nutrientes'))),
+            DataColumn(label: Expanded(child: Text('Acciones'))),
+          ],
+          rows: _ingredientes.map((ingrediente) {
+            final nutrientes = ingrediente['nutrientes']
+                .map((n) => '${n['name']} (${n['value_per_100g']} ${n['unit']})')
+                .join(', ');
+
+            return DataRow(cells: [
+              DataCell(Text(ingrediente['name'] ?? 'Sin nombre')),
+              DataCell(Text(nutrientes.isNotEmpty ? nutrientes : 'Sin nutrientes')),
+              DataCell(Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: () {
+                      // TODO: Navegar a AdminIngredientesFormScreen para editar ingrediente
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () {
+                      // TODO: Eliminar ingrediente
+                    },
+                  ),
+                ],
+              )),
+            ]);
+          }).toList(),
+        ),
       ),
     );
   }
