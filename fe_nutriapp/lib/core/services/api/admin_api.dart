@@ -30,7 +30,7 @@ class AdminApi {
   }) async {
     final queryParams = {
       'page': page.toString(),
-      if (name != null) 'name': name,
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
     };
 
     final uri = Uri.parse('/ingredientes').replace(queryParameters: queryParams);

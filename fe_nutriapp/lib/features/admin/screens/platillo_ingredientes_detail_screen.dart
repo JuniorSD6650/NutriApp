@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'dart:async'; // ✅ NUEVO: Para el debouncing
 
 class PlatilloIngredientesDetailScreen extends StatefulWidget {
   final String platilloId;
@@ -22,7 +23,6 @@ class _PlatilloIngredientesDetailScreenState
     extends State<PlatilloIngredientesDetailScreen> {
   bool _isLoading = true;
   Map<String, dynamic>? _platillo;
-  List<dynamic> _todosIngredientes = [];
 
   @override
   void initState() {
@@ -34,14 +34,10 @@ class _PlatilloIngredientesDetailScreenState
     setState(() => _isLoading = true);
     try {
       final api = context.read<NutriAppApi>();
-      
-      // ✅ Cargar TODOS los ingredientes (sin paginación)
       final platillo = await api.admin.getPlatilloById(widget.platilloId);
-      final ingredientesResponse = await api.admin.getAllIngredientes(); // ✅ NUEVO MÉTODO
       
       setState(() {
         _platillo = platillo;
-        _todosIngredientes = ingredientesResponse;
         _isLoading = false;
       });
     } catch (e) {
@@ -94,7 +90,6 @@ class _PlatilloIngredientesDetailScreenState
     await showDialog(
       context: context,
       builder: (context) => _AgregarIngredienteDialog(
-        todosIngredientes: _todosIngredientes,
         onAgregar: (ingredienteId, cantidad, unidad) async {
           try {
             final api = context.read<NutriAppApi>();
@@ -105,7 +100,6 @@ class _PlatilloIngredientesDetailScreenState
               unidad,
             );
 
-            // ✅ RECARGAR DATOS INMEDIATAMENTE
             await _loadData();
 
             if (mounted) {
@@ -299,12 +293,12 @@ class _PlatilloIngredientesDetailScreenState
   }
 }
 
+
+// ✅ NUEVO WIDGET OPTIMIZADO
 class _AgregarIngredienteDialog extends StatefulWidget {
-  final List<dynamic> todosIngredientes;
   final Function(String, double, String) onAgregar;
 
   const _AgregarIngredienteDialog({
-    required this.todosIngredientes,
     required this.onAgregar,
   });
 
@@ -315,65 +309,148 @@ class _AgregarIngredienteDialog extends StatefulWidget {
 class _AgregarIngredienteDialogState extends State<_AgregarIngredienteDialog> {
   String? _selectedIngredienteId;
   final _cantidadController = TextEditingController(text: '100');
-  String _searchQuery = '';
+  final _searchController = TextEditingController();
+  
+  List<dynamic> _ingredientesFiltrados = [];
+  bool _isSearching = false;
+  Timer? _debounce;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _cantidadController.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _buscarIngredientes(_searchController.text);
+    });
+  }
+
+  Future<void> _buscarIngredientes(String query) async {
+    // ✅ CAMBIO: Validar que tenga al menos 3 caracteres
+    if (query.trim().length < 3) {
+      setState(() {
+        _ingredientesFiltrados = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final api = context.read<NutriAppApi>();
+      final response = await api.admin.getIngredientes(
+        page: 1,
+        name: query.trim(),
+      );
+
+      setState(() {
+        _ingredientesFiltrados = response['data'] ?? [];
+        _isSearching = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isSearching = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al buscar: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final ingredientesFiltrados = widget.todosIngredientes.where((ing) {
-      final nombre = (ing['name'] ?? '').toString().toLowerCase();
-      return nombre.contains(_searchQuery.toLowerCase());
-    }).toList();
-
     return AlertDialog(
       title: const Text('Agregar ingrediente'),
-      content: SizedBox(
-        width: double.maxFinite,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              decoration: const InputDecoration(
-                labelText: 'Buscar ingrediente',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+      // ✅ SOLUCIÓN AL OVERFLOW: Envolver content en SingleChildScrollView
+      content: SingleChildScrollView(
+        child: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  labelText: 'Buscar ingrediente',
+                  hintText: 'Escribe al menos 3 letras...', // ✅ CAMBIO: Actualizar hint
+                  prefixIcon: const Icon(Icons.search),
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _isSearching
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Padding(
+                            padding: EdgeInsets.all(12.0),
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              height: 200,
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: ingredientesFiltrados.length,
-                itemBuilder: (context, index) {
-                  final ing = ingredientesFiltrados[index];
-                  return RadioListTile<String>(
-                    title: Text(ing['name'] ?? 'Sin nombre'),
-                    value: ing['id'],
-                    groupValue: _selectedIngredienteId,
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedIngredienteId = value;
-                      });
+              const SizedBox(height: 16),
+              // ✅ CAMBIO: Mensaje actualizado para 3 caracteres
+              if (_ingredientesFiltrados.isEmpty && !_isSearching && _searchController.text.length < 3)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('Escribe al menos 3 letras para buscar'),
+                )
+              else if (_ingredientesFiltrados.isEmpty && !_isSearching && _searchController.text.length >= 3)
+                const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Text('No se encontraron ingredientes'),
+                )
+              else
+                SizedBox(
+                  height: 200,
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: _ingredientesFiltrados.length,
+                    itemBuilder: (context, index) {
+                      final ing = _ingredientesFiltrados[index];
+                      return RadioListTile<String>(
+                        title: Text(ing['name'] ?? 'Sin nombre'),
+                        value: ing['id'],
+                        groupValue: _selectedIngredienteId,
+                        onChanged: (value) {
+                          setState(() {
+                            _selectedIngredienteId = value;
+                          });
+                        },
+                      );
                     },
-                  );
-                },
+                  ),
+                ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _cantidadController,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Cantidad (g)',
+                  border: OutlineInputBorder(),
+                ),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _cantidadController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Cantidad (g)',
-                border: OutlineInputBorder(),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       actions: [
