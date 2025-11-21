@@ -109,7 +109,7 @@ export class AuthService {
   }
 
   async getUserWithProfiles(userId: string) {
-    const user = await this.usersService.findOne(userId);
+    const user = await this.usersService.findOneWithProfiles(userId);
     
     // VALIDACIÓN: Si el usuario no existe (por ejemplo, se borró la DB)
     if (!user) {
