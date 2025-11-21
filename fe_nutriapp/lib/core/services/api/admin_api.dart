@@ -1,6 +1,10 @@
 import 'package:fe_nutriapp/core/services/api_service.dart';
 
 class AdminApi {
+    Future<Map<String, dynamic>> createUsuario(Map<String, dynamic> createUserDto) async {
+      final response = await _apiService.post('/users', createUserDto);
+      return response as Map<String, dynamic>;
+    }
   final ApiService _apiService;
 
   AdminApi(this._apiService);
@@ -24,6 +28,14 @@ class AdminApi {
     await _apiService.delete('/users/$userId');
   }
 
+  Future<Map<String, dynamic>> updateUsuario(
+    String userId,
+    Map<String, dynamic> updateUserDto,
+  ) async {
+    final response = await _apiService.patch('/users/$userId', updateUserDto);
+    return response as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> getIngredientes({
     int page = 1,
     String? name,
@@ -33,14 +45,22 @@ class AdminApi {
       if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
     };
 
-    final uri = Uri.parse('/ingredientes').replace(queryParameters: queryParams);
+    final uri = Uri.parse(
+      '/ingredientes',
+    ).replace(queryParameters: queryParams);
     return await _apiService.get(uri.toString()) as Map<String, dynamic>;
   }
 
   // ✅ NUEVO: Obtener TODOS los ingredientes sin paginación
   Future<List<dynamic>> getAllIngredientes() async {
-    final response = await _apiService.get('/ingredientes?limit=1000') as Map<String, dynamic>;
+    final response =
+        await _apiService.get('/ingredientes?limit=1000')
+            as Map<String, dynamic>;
     return response['data'] as List<dynamic>;
+  }
+
+  Future<void> restoreUsuario(String userId) async {
+    await _apiService.patch('/users/$userId/restore', {});
   }
 
   Future<Map<String, dynamic>> getNutrientes({
@@ -85,7 +105,10 @@ class AdminApi {
       'cantidad': cantidad,
       'unidad': unidad,
     };
-    final response = await _apiService.post('/platillos/$platilloId/ingredientes', body);
+    final response = await _apiService.post(
+      '/platillos/$platilloId/ingredientes',
+      body,
+    );
     return response as Map<String, dynamic>;
   }
 
@@ -94,6 +117,8 @@ class AdminApi {
     String platilloId,
     String ingredienteId,
   ) async {
-    await _apiService.delete('/platillos/$platilloId/ingredientes/$ingredienteId');
+    await _apiService.delete(
+      '/platillos/$platilloId/ingredientes/$ingredienteId',
+    );
   }
 }

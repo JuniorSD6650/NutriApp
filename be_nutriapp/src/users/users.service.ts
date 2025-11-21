@@ -44,6 +44,10 @@ export class UsersService {
             return null; // No hay contraseña almacenada
         }
 
+        if (!user.isActive) {
+            return null; // Usuario desactivado
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
 
         if (!isPasswordValid) {
@@ -86,7 +90,7 @@ export class UsersService {
     }
 
     async createUser(createUserDto: CreateUserDto): Promise<User> {
-        const { email, password, name, role } = createUserDto;
+        const { email, password, name, role, medicoProfile, pacienteProfile } = createUserDto as any;
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
         try {
@@ -96,7 +100,16 @@ export class UsersService {
                 name,
                 role,
             });
-            return await this.userRepository.save(newUser);
+            const savedUser = await this.userRepository.save(newUser);
+
+            // Crear perfil si corresponde
+            if (role === Role.MEDICO && medicoProfile) {
+                await this.medicoProfileRepository.save({ ...medicoProfile, user: savedUser });
+            }
+            if (role === Role.PACIENTE && pacienteProfile) {
+                await this.pacienteProfileRepository.save({ ...pacienteProfile, user: savedUser });
+            }
+            return savedUser;
         } catch (error) {
             if (error.code === 'ER_DUP_ENTRY' || error.code === '23505') {
                 throw new ConflictException('Ya existe un usuario con ese email');

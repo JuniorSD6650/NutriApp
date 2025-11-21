@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'dart:ui';
 
 class ApiService {
-  final String baseUrl = "https://20535e1bb5e0.ngrok-free.app";
+  final String baseUrl = "https://aa4d95783080.ngrok-free.app";
   
   final Map<String, String> _ngrokHeaders = {
     'ngrok-skip-browser-warning': 'true',
@@ -110,4 +110,14 @@ class ApiService {
     );
     return processResponse(response);
   }
+  
+    // ✅ Método PATCH
+    Future<dynamic> patch(String endpoint, Map<String, dynamic> body) async {
+      final response = await http.patch(
+        Uri.parse('$baseUrl$endpoint'),
+        headers: headers,
+        body: jsonEncode(body),
+      );
+      return processResponse(response);
+    }
 }
