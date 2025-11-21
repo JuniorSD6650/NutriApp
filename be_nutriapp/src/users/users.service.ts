@@ -66,13 +66,31 @@ export class UsersService {
         if (role) where.role = role;
         if (name) where.name = Like(`%${name}%`);
 
-        const [data, total] = await this.userRepository.findAndCount({
+        let findOptions: any = {
             where,
             take: limit,
             skip,
             order: { createdAt: 'DESC' },
-            select: ['id', 'name', 'email', 'role', 'isActive'], // Asegúrate de incluir `isActive`
-        });
+            select: ['id', 'name', 'email', 'role', 'isActive'],
+        };
+
+        // Incluir relaciones para mostrar nombre del médico asignado en pacientes
+        if (role === Role.MEDICO) {
+            findOptions = {
+                ...findOptions,
+                relations: ['medicoProfile'],
+            };
+            delete findOptions.select;
+        } else {
+            // Para pacientes y otros roles, incluir medicoAsignado y su user
+            findOptions = {
+                ...findOptions,
+                relations: ['medicoAsignado', 'medicoAsignado.user'],
+            };
+            delete findOptions.select;
+        }
+
+        const [data, total] = await this.userRepository.findAndCount(findOptions);
 
         return {
             data,

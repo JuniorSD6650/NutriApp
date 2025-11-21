@@ -435,10 +435,58 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
     );
   }
 
-  void _showEditUsuarioModal(BuildContext context, Map<String, dynamic> user) {
+  Widget _buildPaginationControls() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
+              ),
+              Text('Página $_currentPage de $_totalPages'),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+              ),
+            ],
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _currentPage = 1;
+                _selectedRole = null;
+                _searchName = null;
+              });
+              _fetchUsuarios();
+            },
+            child: const Text('Restablecer filtros'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _showEditUsuarioModal(BuildContext context, Map<String, dynamic> user) async {
+    // Obtener lista de médicos antes de mostrar el modal
+    final api = context.read<NutriAppApi>();
+    final response = await api.admin.getUsuarios(role: 'medico');
+    // Usar el perfil médico para el value y mostrar el nombre
+    final medicos = List<Map<String, dynamic>>.from(response['data'] ?? []);
+
     final _formKey = GlobalKey<FormState>();
     String name = user['name'] ?? '';
     String role = user['role'] ?? '';
+    // Obtener el id de perfil médico asignado (puede ser null)
+    String? medicoAsignado;
+    String? medicoAsignadoNombre;
+    if (user['medicoAsignado'] != null && user['medicoAsignado'] is Map<String, dynamic>) {
+      medicoAsignado = user['medicoAsignado']['id'] as String?;
+      medicoAsignadoNombre = user['medicoAsignado']['user']?['name'] as String?;
+    }
     bool isLoading = false;
 
     showDialog(
@@ -459,18 +507,32 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                       validator: (value) => value == null || value.isEmpty ? 'Campo requerido' : null,
                       onChanged: (value) => name = value,
                     ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: role.isNotEmpty ? role : null,
-                      decoration: const InputDecoration(labelText: 'Rol'),
-                      items: const [
-                        DropdownMenuItem(value: 'admin', child: Text('Admin')),
-                        DropdownMenuItem(value: 'medico', child: Text('Médico')),
-                        DropdownMenuItem(value: 'paciente', child: Text('Paciente')),
-                      ],
-                      validator: (value) => value == null || value.isEmpty ? 'Campo requerido' : null,
-                      onChanged: (value) => role = value ?? '',
-                    ),
+                    if (role == 'paciente') ...[
+                      const SizedBox(height: 16),
+                      DropdownButtonFormField<String>(
+                        value: medicoAsignado,
+                        decoration: const InputDecoration(labelText: 'Médico asignado'),
+                        items: medicos.map((medico) {
+                          final medicoProfile = medico['medicoProfile'];
+                          if (medicoProfile == null) return null;
+                          return DropdownMenuItem<String>(
+                            value: medicoProfile['id'],
+                            child: Text(medico['name'] ?? 'Sin nombre'),
+                          );
+                        }).whereType<DropdownMenuItem<String>>().toList(),
+                        onChanged: (value) => setModalState(() => medicoAsignado = value),
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          medicoAsignadoNombre != null
+                              ? 'Médico asignado actual: $medicoAsignadoNombre'
+                              : 'Sin médico asignado',
+                          style: const TextStyle(fontSize: 14, color: Colors.grey),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -486,11 +548,13 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                           if (_formKey.currentState?.validate() ?? false) {
                             setModalState(() => isLoading = true);
                             try {
-                              final api = context.read<NutriAppApi>();
-                              await api.admin.updateUsuario(user['id'], {
+                              final updatePayload = {
                                 'name': name,
-                                'role': role,
-                              });
+                              };
+                              if (role == 'paciente') {
+                                updatePayload['medicoAsignado'] = medicoAsignado ?? '';
+                              }
+                              await api.admin.updateUsuario(user['id'], updatePayload);
                               Navigator.of(context).pop();
                               await _fetchUsuarios();
                             } catch (e) {
@@ -501,33 +565,15 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                             }
                           }
                         },
-                  child: isLoading ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Text('Guardar'),
+                  child: isLoading
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Guardar'),
                 ),
               ],
             );
           },
         );
       },
-    );
-  }
-
-  Widget _buildPaginationControls() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
-          ),
-          Text('Página $_currentPage de $_totalPages'),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
-          ),
-        ],
-      ),
     );
   }
 }
