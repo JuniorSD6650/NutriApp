@@ -18,6 +18,12 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
   int _currentPage = 1;
   int _totalPages = 1;
   String? _searchName;
+  final TextEditingController _searchController = TextEditingController();
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -107,6 +113,7 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
     return Padding(
       padding: const EdgeInsets.all(16.0),
       child: TextField(
+        controller: _searchController,
         decoration: const InputDecoration(
           labelText: 'Buscar por nombre',
           border: OutlineInputBorder(),
@@ -170,14 +177,29 @@ class _AdminIngredientesScreenState extends State<AdminIngredientesScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
+              ),
+              Text('Página $_currentPage de $_totalPages'),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+              ),
+            ],
           ),
-          Text('Página $_currentPage de $_totalPages'),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _currentPage = 1;
+                _searchName = null;
+                _searchController.clear();
+              });
+              _fetchIngredientes();
+            },
+            child: const Text('Restablecer filtros'),
           ),
         ],
       ),

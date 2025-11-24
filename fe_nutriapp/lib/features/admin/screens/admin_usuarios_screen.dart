@@ -12,7 +12,13 @@ class AdminUsuariosScreen extends StatefulWidget {
 }
 
 class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
+  final TextEditingController _searchController = TextEditingController();
     Future<void> _showCreateUsuarioModal(BuildContext context) async {
+        @override
+        void dispose() {
+          _searchController.dispose();
+          super.dispose();
+        }
       final _formKey = GlobalKey<FormState>();
       String name = '';
       String email = '';
@@ -340,6 +346,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
       child: Column(
         children: [
           TextField(
+            controller: _searchController,
             decoration: const InputDecoration(
               labelText: 'Buscar por nombre',
               border: OutlineInputBorder(),
@@ -460,6 +467,7 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                 _currentPage = 1;
                 _selectedRole = null;
                 _searchName = null;
+                _searchController.clear();
               });
               _fetchUsuarios();
             },

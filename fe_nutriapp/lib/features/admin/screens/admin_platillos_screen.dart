@@ -20,11 +20,19 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
   int _currentPage = 1;
   int _totalPages = 1;
   String? _searchName;
+  String _filtroActivo = 'todos'; // 'todos', 'activos', 'inactivos'
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _fetchPlatillos();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchPlatillos() async {
@@ -112,6 +120,7 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
         children: [
           Expanded(
             child: TextField(
+              controller: _searchController,
               decoration: const InputDecoration(
                 labelText: 'Buscar por nombre',
                 border: OutlineInputBorder(),
@@ -227,14 +236,34 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          IconButton(
-            icon: const Icon(Icons.chevron_left),
-            onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: _currentPage > 1 ? () => _changePage(-1) : null,
+              ),
+              Text('Página $_currentPage de $_totalPages'),
+              IconButton(
+                icon: const Icon(Icons.chevron_right),
+                onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+              ),
+            ],
           ),
-          Text('Página $_currentPage de $_totalPages'),
-          IconButton(
-            icon: const Icon(Icons.chevron_right),
-            onPressed: _currentPage < _totalPages ? () => _changePage(1) : null,
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _currentPage = 1;
+                _searchName = null;
+                _searchController.clear();
+                // Si tienes un filtro de select, pon el valor por defecto
+                if (mounted) {
+                  // Si tienes un DropdownButton<String> para filtroActivo
+                  _filtroActivo = 'todos';
+                }
+              });
+              _fetchPlatillos();
+            },
+            child: const Text('Restablecer filtros'),
           ),
         ],
       ),
