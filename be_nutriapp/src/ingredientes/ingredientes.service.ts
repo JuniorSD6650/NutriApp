@@ -17,6 +17,39 @@ import { FiltroEstado } from '../common/enums/filtro-estado.enum'; // <-- IMPORT
 
 @Injectable()
 export class IngredientesService {
+    async addNutrienteToIngrediente(ingredienteId: string, nutrienteId: string, value_per_100g: number) {
+      const ingrediente = await this.findOne(ingredienteId);
+      const nutriente = await this.nutrienteRepository.findOneBy({ id: nutrienteId });
+      if (!nutriente) {
+        throw new NotFoundException(`Nutriente con ID ${nutrienteId} no encontrado`);
+      }
+      // Verificar si ya existe la relación
+      const existe = await this.ingredienteNutrienteRepository.findOne({
+        where: { ingrediente: { id: ingredienteId }, nutriente: { id: nutrienteId } }
+      });
+      if (existe) {
+        throw new ConflictException('El nutriente ya está asociado a este ingrediente');
+      }
+      const nuevaRelacion = this.ingredienteNutrienteRepository.create({
+        ingrediente,
+        nutriente,
+        value_per_100g,
+      });
+      await this.ingredienteNutrienteRepository.save(nuevaRelacion);
+      return this.findOne(ingredienteId);
+    }
+
+    async removeNutrienteFromIngrediente(ingredienteId: string, nutrienteId: string) {
+      const ingrediente = await this.findOne(ingredienteId);
+      const relacion = await this.ingredienteNutrienteRepository.findOne({
+        where: { ingrediente: { id: ingredienteId }, nutriente: { id: nutrienteId } }
+      });
+      if (!relacion) {
+        throw new NotFoundException('La relación ingrediente-nutriente no existe');
+      }
+      await this.ingredienteNutrienteRepository.remove(relacion);
+      return this.findOne(ingredienteId);
+    }
   constructor(
     @InjectRepository(Ingrediente)
     private readonly ingredienteRepository: Repository<Ingrediente>,

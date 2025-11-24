@@ -1,6 +1,37 @@
 import 'package:fe_nutriapp/core/services/api_service.dart';
 
 class AdminApi {
+        Future<Map<String, dynamic>> getIngredienteById(String ingredienteId) async {
+          final response = await _apiService.get('/ingredientes/$ingredienteId');
+          return response as Map<String, dynamic>;
+        }
+      // Añadir nutriente a ingrediente
+      Future<Map<String, dynamic>> addNutrienteToIngrediente({
+        required String ingredienteId,
+        required String nutrienteId,
+        required double valuePer100g,
+      }) async {
+        final body = {
+          'nutrienteId': nutrienteId,
+          'value_per_100g': valuePer100g,
+        };
+        final response = await _apiService.post(
+          '/ingredientes/$ingredienteId/nutrientes',
+          body,
+        );
+        return response as Map<String, dynamic>;
+      }
+
+      // Eliminar nutriente de ingrediente
+      Future<Map<String, dynamic>> removeNutrienteFromIngrediente({
+        required String ingredienteId,
+        required String nutrienteId,
+      }) async {
+        final response = await _apiService.delete(
+          '/ingredientes/$ingredienteId/nutrientes/$nutrienteId',
+        );
+        return response as Map<String, dynamic>;
+      }
     Future<Map<String, dynamic>> createUsuario(Map<String, dynamic> createUserDto) async {
       final response = await _apiService.post('/users', createUserDto);
       return response as Map<String, dynamic>;

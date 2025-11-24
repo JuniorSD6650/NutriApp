@@ -16,6 +16,27 @@ import { ConfirmDeleteDto } from '../common/dto/confirm-delete.dto';
 
 @Controller('ingredientes')
 export class IngredientesController {
+    // Añadir nutriente a ingrediente
+    @Post(':id/nutrientes')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(Role.ADMIN)
+    async addNutrienteToIngrediente(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Body() body: { nutrienteId: string; value_per_100g: number }
+    ) {
+      return this.ingredientesService.addNutrienteToIngrediente(id, body.nutrienteId, body.value_per_100g);
+    }
+
+    // Eliminar nutriente de ingrediente
+    @Delete(':id/nutrientes/:nutrienteId')
+    @UseGuards(AuthGuard('jwt'), RolesGuard)
+    @Roles(Role.ADMIN)
+    async removeNutrienteFromIngrediente(
+      @Param('id', ParseUUIDPipe) id: string,
+      @Param('nutrienteId', ParseUUIDPipe) nutrienteId: string
+    ) {
+      return this.ingredientesService.removeNutrienteFromIngrediente(id, nutrienteId);
+    }
   constructor(private readonly ingredientesService: IngredientesService) { }
 
   @Post()

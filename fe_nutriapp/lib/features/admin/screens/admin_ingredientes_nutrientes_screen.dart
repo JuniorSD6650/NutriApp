@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
+import 'ingrediente_nutrientes_detail_screen.dart';
 
 class AdminIngredientesNutrientesScreen extends StatefulWidget {
   const AdminIngredientesNutrientesScreen({super.key});
@@ -191,7 +192,14 @@ class _IngredientesViewState extends State<_IngredientesView> {
                 IconButton(
                   icon: const Icon(Icons.visibility, color: AppColors.primary),
                   onPressed: () {
-                    _showNutrientesModal(context, ingrediente);
+                    Navigator.of(context, rootNavigator: true).push(
+                      MaterialPageRoute(
+                        builder: (context) => IngredienteNutrientesDetailScreen(
+                          ingredienteId: ingrediente['id'].toString(),
+                          ingredienteNombre: ingrediente['name'] ?? 'Sin nombre',
+                        ),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -218,39 +226,6 @@ class _IngredientesViewState extends State<_IngredientesView> {
     );
   }
 
-  void _showNutrientesModal(BuildContext context, Map<String, dynamic> ingrediente) {
-    final nutrientes = ingrediente['nutrientes'] ?? [];
-
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text('Nutrientes de ${ingrediente['name'] ?? 'Sin nombre'}'),
-          content: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: nutrientes.map<Widget>((nutriente) {
-                final nutrienteData = nutriente['nutriente'] ?? {};
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4.0),
-                  child: Text(
-                    '${nutrienteData['name'] ?? 'Sin nombre'}: ${nutriente['value_per_100g'] ?? '0'} ${nutrienteData['unit'] ?? ''}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cerrar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildPaginationControls() {
     return Padding(
