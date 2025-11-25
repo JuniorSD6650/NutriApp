@@ -87,8 +87,76 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              // TODO: Navegar a AdminPlatillosFormScreen para crear nuevo platillo
+            onPressed: () async {
+              // Modal para registrar nuevo platillo (solo nombre y descripción)
+              final nuevoPlatillo = await showDialog<Map<String, String>>(
+                context: context,
+                builder: (context) {
+                  final nombreController = TextEditingController();
+                  final descripcionController = TextEditingController();
+                  return AlertDialog(
+                    title: const Text('Registrar nuevo platillo'),
+                    content: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          TextField(
+                            controller: nombreController,
+                            decoration: const InputDecoration(labelText: 'Nombre'),
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: descripcionController,
+                            decoration: const InputDecoration(labelText: 'Descripción'),
+                          ),
+                        ],
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: const Text('Cancelar'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          if (nombreController.text.trim().isNotEmpty) {
+                            Navigator.of(context).pop({
+                              'nombre': nombreController.text.trim(),
+                              'descripcion': descripcionController.text.trim(),
+                            });
+                          }
+                        },
+                        child: const Text('Registrar'),
+                      ),
+                    ],
+                  );
+                },
+              );
+              if (nuevoPlatillo != null) {
+                try {
+                  final adminApi = context.read<NutriAppApi>().admin;
+                  await adminApi.createPlatillo({
+                    'nombre': nuevoPlatillo['nombre'],
+                    'descripcion': nuevoPlatillo['descripcion'],
+                  });
+                  if (mounted) _fetchPlatillos();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Platillo registrado correctamente')),
+                  );
+                } catch (e) {
+                  String errorMsg = e.toString();
+                  // Si la excepción contiene un body con message, extraerlo
+                  if (e is Exception && e.toString().contains('message')) {
+                    final match = RegExp(r'message[":\s]*([^"]+)').firstMatch(e.toString());
+                    if (match != null) {
+                      errorMsg = match.group(1) ?? errorMsg;
+                    }
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error al registrar: $errorMsg')),
+                  );
+                }
+              }
             },
           ),
         ],
@@ -178,175 +246,178 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
   Widget _buildPlatillosTable(BuildContext context, ThemeData theme) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 18,
-        headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
-        columns: const [
-          DataColumn(label: Text('Nombre')),
-          DataColumn(label: Text('Descripción')),
-          DataColumn(label: Text('Acciones')),
-        ],
-        rows: _platillos.map((platillo) {
-          final tieneDescripcion = platillo['descripcion'] != null && 
-                                  (platillo['descripcion'] as String).trim().isNotEmpty;
-          final isInactive = platillo['deletedAt'] != null;
+      child: ConstrainedBox(
+        constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width),
+        child: DataTable(
+          columnSpacing: 18,
+          headingRowColor: MaterialStateProperty.resolveWith((states) => theme.cardColor),
+          columns: const [
+            DataColumn(label: Text('Nombre')),
+            DataColumn(label: Text('Descripción')),
+            DataColumn(label: Text('Acciones')),
+          ],
+          rows: _platillos.map((platillo) {
+            final tieneDescripcion = platillo['descripcion'] != null && 
+                                    (platillo['descripcion'] as String).trim().isNotEmpty;
+            final isInactive = platillo['deletedAt'] != null;
 
-          return DataRow(cells: [
-            DataCell(Text(
-              platillo['nombre'] ?? 'Sin nombre',
-              style: isInactive
-                  ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
-                  : null,
-            )),
-            DataCell(
-              IconButton(
-                icon: Icon(
-                  Icons.description,
-                  color: tieneDescripcion ? Colors.blue : Colors.grey,
-                ),
-                onPressed: tieneDescripcion
-                    ? () {
-                        _showDescriptionModal(context, platillo);
-                      }
+            return DataRow(cells: [
+              DataCell(Text(
+                platillo['nombre'] ?? 'Sin nombre',
+                style: isInactive
+                    ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
                     : null,
-              ),
-            ),
-            DataCell(Row(
-              children: [
+              )),
+              DataCell(
                 IconButton(
-                  icon: const Icon(Icons.visibility, color: Colors.blue),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PlatilloIngredientesDetailScreen(
-                          platilloId: platillo['id'],
-                          platilloNombre: platillo['nombre'] ?? 'Sin nombre',
-                        ),
-                      ),
-                    );
-                  },
+                  icon: Icon(
+                    Icons.description,
+                    color: tieneDescripcion ? Colors.blue : Colors.grey,
+                  ),
+                  onPressed: tieneDescripcion
+                      ? () {
+                          _showDescriptionModal(context, platillo);
+                        }
+                      : null,
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20),
-                  onPressed: isInactive
-                      ? null
-                      : () async {
-                          final nombreController = TextEditingController(text: platillo['nombre'] ?? '');
-                          final descripcionController = TextEditingController(text: platillo['descripcion'] ?? '');
-                          final result = await showDialog<Map<String, String>>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Editar platillo'),
-                              content: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  TextField(
-                                    controller: nombreController,
-                                    decoration: const InputDecoration(labelText: 'Nombre'),
+              ),
+              DataCell(Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility, color: Colors.blue),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PlatilloIngredientesDetailScreen(
+                            platilloId: platillo['id'],
+                            platilloNombre: platillo['nombre'] ?? 'Sin nombre',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit, size: 20),
+                    onPressed: isInactive
+                        ? null
+                        : () async {
+                            final nombreController = TextEditingController(text: platillo['nombre'] ?? '');
+                            final descripcionController = TextEditingController(text: platillo['descripcion'] ?? '');
+                            final result = await showDialog<Map<String, String>>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Editar platillo'),
+                                content: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextField(
+                                      controller: nombreController,
+                                      decoration: const InputDecoration(labelText: 'Nombre'),
+                                    ),
+                                    const SizedBox(height: 12),
+                                    TextField(
+                                      controller: descripcionController,
+                                      decoration: const InputDecoration(labelText: 'Descripción'),
+                                    ),
+                                  ],
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(context).pop(),
+                                    child: const Text('Cancelar'),
                                   ),
-                                  const SizedBox(height: 12),
-                                  TextField(
-                                    controller: descripcionController,
-                                    decoration: const InputDecoration(labelText: 'Descripción'),
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop({
+                                        'nombre': nombreController.text.trim(),
+                                        'descripcion': descripcionController.text.trim(),
+                                      });
+                                    },
+                                    child: const Text('Guardar'),
                                   ),
                                 ],
                               ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  child: const Text('Cancelar'),
-                                ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.of(context).pop({
-                                      'nombre': nombreController.text.trim(),
-                                      'descripcion': descripcionController.text.trim(),
-                                    });
+                            );
+                            if (result != null) {
+                              try {
+                                final adminApi = context.read<NutriAppApi>().admin;
+                                await adminApi.updatePlatillo(
+                                  platillo['id'].toString(),
+                                  {
+                                    'nombre': result['nombre'],
+                                    'descripcion': result['descripcion'],
                                   },
-                                  child: const Text('Guardar'),
-                                ),
-                              ],
-                            ),
-                          );
-                          if (result != null) {
-                            try {
-                              final adminApi = context.read<NutriAppApi>().admin;
-                              await adminApi.updatePlatillo(
-                                platillo['id'].toString(),
-                                {
-                                  'nombre': result['nombre'],
-                                  'descripcion': result['descripcion'],
-                                },
-                              );
-                              if (mounted) _fetchPlatillos();
-                            } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Error al editar: ${e.toString()}')),
                                 );
+                                if (mounted) _fetchPlatillos();
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error al editar: ${e.toString()}')),
+                                  );
+                                }
                               }
                             }
+                          },
+                  ),
+                  if (!isInactive)
+                    IconButton(
+                      icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                      onPressed: () async {
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Desactivar platillo'),
+                            content: Text('¿Seguro que deseas desactivar "${platillo['nombre']}"?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Desactivar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          try {
+                            final adminApi = context.read<NutriAppApi>().admin;
+                            await adminApi.deactivatePlatillo(platillo['id'].toString());
+                            if (mounted) _fetchPlatillos();
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error al desactivar: ${e.toString()}')),
+                              );
+                            }
                           }
-                        },
-                ),
-                if (!isInactive)
-                  IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                    onPressed: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Desactivar platillo'),
-                          content: Text('¿Seguro que deseas desactivar "${platillo['nombre']}"?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(false),
-                              child: const Text('Cancelar'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () => Navigator.of(ctx).pop(true),
-                              child: const Text('Desactivar'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirm == true) {
+                        }
+                      },
+                    ),
+                  if (isInactive)
+                    IconButton(
+                      icon: const Icon(Icons.refresh, size: 20, color: Colors.green),
+                      onPressed: () async {
                         try {
                           final adminApi = context.read<NutriAppApi>().admin;
-                          await adminApi.deactivatePlatillo(platillo['id'].toString());
+                          await adminApi.restorePlatillo(platillo['id'].toString());
                           if (mounted) _fetchPlatillos();
                         } catch (e) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error al desactivar: ${e.toString()}')),
+                              SnackBar(content: Text('Error al reactivar: ${e.toString()}')),
                             );
                           }
                         }
-                      }
-                    },
-                  ),
-                if (isInactive)
-                  IconButton(
-                    icon: const Icon(Icons.refresh, size: 20, color: Colors.green),
-                    onPressed: () async {
-                      try {
-                        final adminApi = context.read<NutriAppApi>().admin;
-                        await adminApi.restorePlatillo(platillo['id'].toString());
-                        if (mounted) _fetchPlatillos();
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Error al reactivar: ${e.toString()}')),
-                          );
-                        }
-                      }
-                    },
-                  ),
-              ],
-            )),
-          ]);
-        }).toList(),
+                      },
+                    ),
+                ],
+              )),
+            ]);
+          }).toList(),
+        ),
       ),
     );
   }

@@ -206,4 +206,9 @@ class AdminApi {
       final response = await _apiService.patch('/nutrientes/$nutrienteId/restore', {});
       return response as Map<String, dynamic>;
     }
+
+    Future<Map<String, dynamic>> createPlatillo(Map<String, dynamic> createPlatilloDto) async {
+      final response = await _apiService.post('/platillos', createPlatilloDto);
+      return response as Map<String, dynamic>;
+    }
 }

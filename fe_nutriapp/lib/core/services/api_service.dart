@@ -45,10 +45,12 @@ class ApiService {
       try {
         final errorBody = jsonDecode(response.body) as Map<String, dynamic>;
         final message = errorBody['message'] ?? '';
-        
-        if (message.toString().contains('no encontrado') || 
-            message.toString().contains('not found')) {
-          print('ApiService: Usuario no encontrado en BD. Ejecutando logout automático.');
+        // Solo forzar logout si el mensaje es de usuario/médico no encontrado
+        final lowerMsg = message.toString().toLowerCase();
+        if (lowerMsg.contains('usuario no encontrado') ||
+            lowerMsg.contains('médico no encontrado') ||
+            lowerMsg.contains('medico no encontrado')) {
+          print('ApiService: Usuario/Médico no encontrado en BD. Ejecutando logout automático.');
           onTokenExpired?.call();
           throw Exception('Tu cuenta ya no existe. Por favor, contacta al administrador.');
         }

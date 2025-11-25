@@ -12,8 +12,8 @@ export class CreatePlatilloDto {
   descripcion?: string;
 
   @IsArray()
-  @ArrayMinSize(1)
+  @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreatePlatilloIngredienteDto)
-  ingredientes: CreatePlatilloIngredienteDto[];
+  ingredientes?: CreatePlatilloIngredienteDto[];
 }

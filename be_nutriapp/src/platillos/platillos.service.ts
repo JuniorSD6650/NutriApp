@@ -32,13 +32,32 @@ export class PlatillosService {
       const platillo = manager.create(Platillo, { nombre, descripcion });
       await manager.save(Platillo, platillo);
       // Si no hay ingredientes, retorna el platillo vacío
-      if (!ingredientes || ingredientes.length === 0) return this.findOne(platillo.id);
+      if (!ingredientes || ingredientes.length === 0) {
+        // Buscar el platillo usando el manager dentro de la transacción
+        const platilloCompleto = await manager.findOne(Platillo, {
+          where: { id: platillo.id },
+          relations: ['ingredientes', 'ingredientes.ingrediente'],
+        });
+        if (!platilloCompleto) {
+          throw new NotFoundException(`Platillo con ID ${platillo.id} no encontrado tras guardar`);
+        }
+        // Calcular el total de ingredientes para el gráfico
+        const totalCantidad = platilloCompleto.ingredientes.reduce((sum, pi) => sum + pi.cantidad, 0);
+        const ingredientesDetalle = platilloCompleto.ingredientes.map((pi) => ({
+          ingredienteId: pi.ingrediente.id,
+          nombre: pi.ingrediente.name,
+          cantidad: pi.cantidad,
+          porcentaje: totalCantidad > 0 ? (pi.cantidad / totalCantidad) * 100 : 0,
+        }));
+        const result = { ...platilloCompleto, ingredientesDetalle };
+        return result;
+      }
       // Optimización: buscar todos los ingredientes de una vez
       const ids = ingredientes.map(i => i.ingredienteId);
       const ingredientesDB = await manager.findByIds(Ingrediente, ids);
       if (ingredientesDB.length !== ids.length) {
         const notFound = ids.filter(id => !ingredientesDB.find(i => i.id === id));
-        throw new NotFoundException(`Ingredientes no encontrados: ${notFound.join(', ')}`);
+        throw new BadRequestException(`Ingredientes no encontrados: ${notFound.join(', ')}`);
       }
       const platilloIngredientes = ingredientes.map(ing => {
         const ingrediente = ingredientesDB.find(i => i.id === ing.ingredienteId);
@@ -50,7 +69,8 @@ export class PlatillosService {
         });
       });
       await manager.save(PlatilloIngrediente, platilloIngredientes);
-      return this.findOne(platillo.id);
+      const result = await this.findOne(platillo.id);
+      return result;
     });
   }
 
