@@ -162,9 +162,8 @@ class AdminApi {
   }
 
   // Desactivar platillo (soft delete)
-  Future<Map<String, dynamic>> deactivatePlatillo(String platilloId) async {
-    final response = await _apiService.delete('/platillos/$platilloId');
-    return response as Map<String, dynamic>;
+  Future<void> deactivatePlatillo(String platilloId) async {
+    await _apiService.delete('/platillos/$platilloId');
   }
 
   // Reactivar platillo
