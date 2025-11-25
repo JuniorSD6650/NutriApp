@@ -54,12 +54,12 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
     String? error;
     List<dynamic> allNutrientes = [];
     try {
-      final response = await api.admin.getNutrientes(page: 1);
+      final response = await api.admin.getNutrientes(page: 1, estado: 'activo');
       allNutrientes = response['data'] as List<dynamic>;
       // Filtrar para mostrar solo los activos y no añadidos
-      final existentes = _nutrientes.map((n) => n['nutriente']['id'].toString()).toSet();
+      final existentes = _nutrientes.map((n) => n['nutriente'] != null ? n['nutriente']['id'].toString() : '').toSet();
       allNutrientes = allNutrientes
-        .where((n) => n['estado'] == 'activo' && !existentes.contains(n['id'].toString()))
+        .where((n) => !existentes.contains(n['id'].toString()))
         .toList();
     } catch (e) {
       error = 'Error al cargar nutrientes';
@@ -77,12 +77,14 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
                   if (error != null) Text(error!, style: const TextStyle(color: Colors.red)),
                   DropdownButtonFormField<String>(
                     decoration: const InputDecoration(labelText: 'Nutriente'),
-                    items: allNutrientes.map((n) {
-                      return DropdownMenuItem(
-                        value: n['id'].toString(),
-                        child: Text(n['name'] ?? ''),
-                      );
-                    }).toList(),
+                    items: allNutrientes.isEmpty
+                        ? [DropdownMenuItem(value: '', child: Text('No hay nutrientes disponibles'))]
+                        : allNutrientes.map((n) {
+                            return DropdownMenuItem(
+                              value: n['id'].toString(),
+                              child: Text(n['name'] ?? ''),
+                            );
+                          }).toList(),
                     onChanged: (value) {
                       setModalState(() => selectedNutrienteId = value);
                     },
@@ -102,7 +104,7 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
                   child: const Text('Cancelar'),
                 ),
                 ElevatedButton(
-                  onPressed: selectedNutrienteId != null && valuePer100g != null
+                  onPressed: selectedNutrienteId != null && selectedNutrienteId != '' && valuePer100g != null
                       ? () async {
                           try {
                             await api.admin.addNutrienteToIngrediente(
@@ -171,7 +173,7 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
                   itemBuilder: (context, index) {
                     final nutriente = _nutrientes[index];
                     final nutrienteData = nutriente['nutriente'] ?? {};
-                    final isInactive = nutrienteData['estado'] == 'inactivo';
+                    final isInactive = nutrienteData['deletedAt'] != null;
                     return ListTile(
                       title: Text(
                         nutrienteData['name'] ?? '',
