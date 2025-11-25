@@ -149,11 +149,15 @@ export class IngredientesService {
       where.deletedAt = IsNull();
     }
 
-    const ingrediente = await this.ingredienteRepository.findOne({
-      where: where,
-      withDeleted: includeInactive,
-      relations: ['nutrientes', 'nutrientes.nutriente'],
-    });
+    // Usar queryBuilder para incluir nutrientes soft deleted
+    const qb = this.ingredienteRepository.createQueryBuilder('ingrediente')
+      .leftJoinAndSelect('ingrediente.nutrientes', 'ingredienteNutriente')
+      .leftJoinAndSelect('ingredienteNutriente.nutriente', 'nutriente', undefined, { withDeleted: true })
+      .where('ingrediente.id = :id', { id });
+    if (!includeInactive) {
+      qb.andWhere('ingrediente.deletedAt IS NULL');
+    }
+    const ingrediente = await qb.getOne();
     if (!ingrediente) {
       throw new NotFoundException(`Ingrediente con ID ${id} no encontrado`);
     }

@@ -56,9 +56,11 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
     try {
       final response = await api.admin.getNutrientes(page: 1);
       allNutrientes = response['data'] as List<dynamic>;
-      // Filtrar para mostrar solo los que no están ya añadidos
+      // Filtrar para mostrar solo los activos y no añadidos
       final existentes = _nutrientes.map((n) => n['nutriente']['id'].toString()).toSet();
-      allNutrientes = allNutrientes.where((n) => !existentes.contains(n['id'].toString())).toList();
+      allNutrientes = allNutrientes
+        .where((n) => n['estado'] == 'activo' && !existentes.contains(n['id'].toString()))
+        .toList();
     } catch (e) {
       error = 'Error al cargar nutrientes';
     }
@@ -133,14 +135,13 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
     try {
       await api.admin.removeNutrienteFromIngrediente(
         ingredienteId: widget.ingredienteId.toString(),
-        nutrienteId: nutriente['nutriente']['id'].toString(),
+        nutrienteId: nutriente['nutriente'] != null ? nutriente['nutriente']['id'].toString() : nutriente['id'].toString(),
       );
       await _fetchNutrientes();
+      setState(() {}); // Fuerza el rebuild para ver los cambios inmediatamente
     } catch (e) {
-      // Solo mostrar error si la relación realmente no se elimina
       await _fetchNutrientes();
-      // Si después de actualizar la lista el nutriente sigue presente, mostrar error
-      final stillExists = _nutrientes.any((n) => n['nutriente']['id'].toString() == nutriente['nutriente']['id'].toString());
+      final stillExists = _nutrientes.any((n) => n['nutriente'] != null && n['nutriente']['id'].toString() == (nutriente['nutriente'] != null ? nutriente['nutriente']['id'].toString() : nutriente['id'].toString()));
       if (stillExists) {
         setState(() {
           _errorMessage = 'Error al eliminar nutriente';
@@ -170,8 +171,14 @@ class _IngredienteNutrientesDetailScreenState extends State<IngredienteNutriente
                   itemBuilder: (context, index) {
                     final nutriente = _nutrientes[index];
                     final nutrienteData = nutriente['nutriente'] ?? {};
+                    final isInactive = nutrienteData['estado'] == 'inactivo';
                     return ListTile(
-                      title: Text(nutrienteData['name'] ?? ''),
+                      title: Text(
+                        nutrienteData['name'] ?? '',
+                        style: isInactive
+                            ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
+                            : null,
+                      ),
                       subtitle: Text('${nutriente['value_per_100g']} ${nutrienteData['unit'] ?? ''}'),
                       trailing: IconButton(
                         icon: const Icon(Icons.delete, color: Colors.red),
