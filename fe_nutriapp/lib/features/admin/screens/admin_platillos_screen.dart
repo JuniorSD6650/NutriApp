@@ -20,7 +20,7 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
   int _currentPage = 1;
   int _totalPages = 1;
   String? _searchName;
-  String _filtroActivo = 'todos'; // 'todos', 'activos', 'inactivos'
+  String _filtroActivo = 'activos'; // 'todos', 'activos', 'inactivos'
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -46,6 +46,7 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
       final response = await api.admin.getPlatillos(
         page: _currentPage,
         name: _searchName,
+        estado: _filtroActivo == 'todos' ? 'todos' : (_filtroActivo == 'activos' ? 'activo' : 'inactivo'),
       );
 
       setState(() {
@@ -116,24 +117,58 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
   Widget _buildFilters(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Buscar por nombre',
-                border: OutlineInputBorder(),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar por nombre',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    _searchName = value.isEmpty ? null : value;
+                  },
+                ),
               ),
-              onChanged: (value) {
-                _searchName = value.isEmpty ? null : value;
-              },
-            ),
+              const SizedBox(width: 8),
+              ElevatedButton(
+                onPressed: _applyFilters,
+                child: const Text('Aplicar'),
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          ElevatedButton(
-            onPressed: _applyFilters,
-            child: const Text('Aplicar'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    const Text('Estado: '),
+                    Expanded(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        value: _filtroActivo,
+                        items: const [
+                          DropdownMenuItem(value: 'todos', child: Text('Todos')),
+                          DropdownMenuItem(value: 'activos', child: Text('Activos')),
+                          DropdownMenuItem(value: 'inactivos', child: Text('Inactivos')),
+                        ],
+                        onChanged: (value) {
+                          setState(() {
+                            _filtroActivo = value ?? 'activos';
+                          });
+                          // Ya no filtra automáticamente, solo cambia el valor
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -154,20 +189,26 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
         rows: _platillos.map((platillo) {
           final tieneDescripcion = platillo['descripcion'] != null && 
                                   (platillo['descripcion'] as String).trim().isNotEmpty;
+          final isInactive = platillo['deletedAt'] != null;
 
           return DataRow(cells: [
-            DataCell(Text(platillo['nombre'] ?? 'Sin nombre')),
+            DataCell(Text(
+              platillo['nombre'] ?? 'Sin nombre',
+              style: isInactive
+                  ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
+                  : null,
+            )),
             DataCell(
               IconButton(
                 icon: Icon(
                   Icons.description,
-                  color: tieneDescripcion ? Colors.blue : Colors.grey, // ✅ Color según disponibilidad
+                  color: tieneDescripcion ? Colors.blue : Colors.grey,
                 ),
-                onPressed: tieneDescripcion 
-                  ? () {
-                      _showDescriptionModal(context, platillo);
-                    }
-                  : null, // ✅ Deshabilitado si no hay descripción
+                onPressed: tieneDescripcion
+                    ? () {
+                        _showDescriptionModal(context, platillo);
+                      }
+                    : null,
               ),
             ),
             DataCell(Row(
@@ -188,16 +229,120 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit, size: 20),
-                  onPressed: () {
-                    // TODO: Navegar a AdminPlatillosFormScreen para editar platillo
-                  },
+                  onPressed: isInactive
+                      ? null
+                      : () async {
+                          final nombreController = TextEditingController(text: platillo['nombre'] ?? '');
+                          final descripcionController = TextEditingController(text: platillo['descripcion'] ?? '');
+                          final result = await showDialog<Map<String, String>>(
+                            context: context,
+                            builder: (context) => AlertDialog(
+                              title: const Text('Editar platillo'),
+                              content: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  TextField(
+                                    controller: nombreController,
+                                    decoration: const InputDecoration(labelText: 'Nombre'),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextField(
+                                    controller: descripcionController,
+                                    decoration: const InputDecoration(labelText: 'Descripción'),
+                                  ),
+                                ],
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(context).pop(),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop({
+                                      'nombre': nombreController.text.trim(),
+                                      'descripcion': descripcionController.text.trim(),
+                                    });
+                                  },
+                                  child: const Text('Guardar'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (result != null) {
+                            try {
+                              final adminApi = context.read<NutriAppApi>().admin;
+                              await adminApi.updatePlatillo(
+                                platillo['id'].toString(),
+                                {
+                                  'nombre': result['nombre'],
+                                  'descripcion': result['descripcion'],
+                                },
+                              );
+                              if (mounted) _fetchPlatillos();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error al editar: ${e.toString()}')),
+                                );
+                              }
+                            }
+                          }
+                        },
                 ),
-                IconButton(
-                  icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                  onPressed: () {
-                    // TODO: Eliminar platillo
-                  },
-                ),
+                if (!isInactive)
+                  IconButton(
+                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                    onPressed: () async {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Desactivar platillo'),
+                          content: Text('¿Seguro que deseas desactivar "${platillo['nombre']}"?'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.of(ctx).pop(false),
+                              child: const Text('Cancelar'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () => Navigator.of(ctx).pop(true),
+                              child: const Text('Desactivar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        try {
+                          final adminApi = context.read<NutriAppApi>().admin;
+                          await adminApi.deactivatePlatillo(platillo['id'].toString());
+                          if (mounted) _fetchPlatillos();
+                        } catch (e) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Error al desactivar: ${e.toString()}')),
+                            );
+                          }
+                        }
+                      }
+                    },
+                  ),
+                if (isInactive)
+                  IconButton(
+                    icon: const Icon(Icons.refresh, size: 20, color: Colors.green),
+                    onPressed: () async {
+                      try {
+                        final adminApi = context.read<NutriAppApi>().admin;
+                        await adminApi.restorePlatillo(platillo['id'].toString());
+                        if (mounted) _fetchPlatillos();
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error al reactivar: ${e.toString()}')),
+                          );
+                        }
+                      }
+                    },
+                  ),
               ],
             )),
           ]);
@@ -255,11 +400,7 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
                 _currentPage = 1;
                 _searchName = null;
                 _searchController.clear();
-                // Si tienes un filtro de select, pon el valor por defecto
-                if (mounted) {
-                  // Si tienes un DropdownButton<String> para filtroActivo
-                  _filtroActivo = 'todos';
-                }
+                _filtroActivo = 'activos';
               });
               _fetchPlatillos();
             },

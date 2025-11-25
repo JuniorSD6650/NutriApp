@@ -110,10 +110,12 @@ class AdminApi {
   Future<Map<String, dynamic>> getPlatillos({
     int page = 1,
     String? name,
+    String? estado,
   }) async {
     final queryParams = {
       'page': page.toString(),
       if (name != null) 'name': name,
+      if (estado != null) 'estado': estado,
     };
 
     final uri = Uri.parse('/platillos').replace(queryParameters: queryParams);
@@ -151,5 +153,23 @@ class AdminApi {
     await _apiService.delete(
       '/platillos/$platilloId/ingredientes/$ingredienteId',
     );
+  }
+
+  // Editar platillo
+  Future<Map<String, dynamic>> updatePlatillo(String platilloId, Map<String, dynamic> updatePlatilloDto) async {
+    final response = await _apiService.patch('/platillos/$platilloId', updatePlatilloDto);
+    return response as Map<String, dynamic>;
+  }
+
+  // Desactivar platillo (soft delete)
+  Future<Map<String, dynamic>> deactivatePlatillo(String platilloId) async {
+    final response = await _apiService.delete('/platillos/$platilloId');
+    return response as Map<String, dynamic>;
+  }
+
+  // Reactivar platillo
+  Future<Map<String, dynamic>> restorePlatillo(String platilloId) async {
+    final response = await _apiService.patch('/platillos/$platilloId/restore', {});
+    return response as Map<String, dynamic>;
   }
 }

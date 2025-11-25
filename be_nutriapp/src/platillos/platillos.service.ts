@@ -153,16 +153,15 @@ export class PlatillosService {
   }
 
   async deactivate(id: string) {
-    const platillo = await this.findOne(id);
     await this.platilloRepository.softDelete(id);
-    return { message: `Platillo ${platillo.nombre} desactivado.` };
+    // Retorna el platillo actualizado (inactivo)
+    return this.findOne(id, true);
   }
 
   async restore(id: string) {
-    const platillo = await this.findOne(id, true);
-    if (!platillo.deletedAt) throw new ConflictException('El platillo ya está activo.');
     await this.platilloRepository.restore(id);
-    return { message: `Platillo ${platillo.nombre} activado.` };
+    // Retorna el platillo actualizado (activo)
+    return this.findOne(id, true);
   }
 
   async remove(id: string, confirmName: string) {
