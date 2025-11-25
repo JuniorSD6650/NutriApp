@@ -171,4 +171,37 @@ class AdminApi {
     final response = await _apiService.patch('/platillos/$platilloId/restore', {});
     return response as Map<String, dynamic>;
   }
+    // Editar ingrediente
+    Future<Map<String, dynamic>> updateIngrediente(String ingredienteId, Map<String, dynamic> updateIngredienteDto) async {
+      final response = await _apiService.patch('/ingredientes/$ingredienteId', updateIngredienteDto);
+      return response as Map<String, dynamic>;
+    }
+
+    // Desactivar ingrediente (soft delete)
+    Future<void> deactivateIngrediente(String ingredienteId) async {
+      await _apiService.delete('/ingredientes/$ingredienteId');
+    }
+
+    // Reactivar ingrediente
+    Future<Map<String, dynamic>> restoreIngrediente(String ingredienteId) async {
+      final response = await _apiService.patch('/ingredientes/$ingredienteId/restore', {});
+      return response as Map<String, dynamic>;
+    }
+
+    // Editar nutriente
+    Future<Map<String, dynamic>> updateNutriente(String nutrienteId, Map<String, dynamic> updateNutrienteDto) async {
+      final response = await _apiService.patch('/nutrientes/$nutrienteId', updateNutrienteDto);
+      return response as Map<String, dynamic>;
+    }
+
+    // Desactivar nutriente (soft delete)
+    Future<void> deactivateNutriente(String nutrienteId) async {
+      await _apiService.delete('/nutrientes/$nutrienteId');
+    }
+
+    // Reactivar nutriente
+    Future<Map<String, dynamic>> restoreNutriente(String nutrienteId) async {
+      final response = await _apiService.patch('/nutrientes/$nutrienteId/restore', {});
+      return response as Map<String, dynamic>;
+    }
 }

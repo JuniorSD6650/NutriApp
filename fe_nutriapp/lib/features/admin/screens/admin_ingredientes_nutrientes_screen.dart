@@ -207,14 +207,54 @@ class _IngredientesViewState extends State<_IngredientesView> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () {
-                      // TODO: Implementar edición
+                    onPressed: () async {
+                      final newName = await showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          final controller = TextEditingController(text: ingrediente['name'] ?? '');
+                          return AlertDialog(
+                            title: const Text('Editar ingrediente'),
+                            content: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(labelText: 'Nombre'),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, controller.text),
+                                child: const Text('Guardar'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (newName != null && newName.trim().isNotEmpty) {
+                        final api = context.read<NutriAppApi>();
+                        await api.admin.updateIngrediente(
+                          ingrediente['id'].toString(),
+                          {'name': newName.trim()},
+                        );
+                        _fetchIngredientes();
+                      }
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                    onPressed: () {
-                      // TODO: Implementar eliminación
+                    icon: Icon(
+                      ingrediente['estado'] == 'inactivo' ? Icons.restore : Icons.delete,
+                      size: 20,
+                      color: ingrediente['estado'] == 'inactivo' ? Colors.green : Colors.red,
+                    ),
+                    onPressed: () async {
+                      final api = context.read<NutriAppApi>();
+                      if (ingrediente['estado'] == 'inactivo') {
+                        await api.admin.restoreIngrediente(ingrediente['id'].toString());
+                      } else {
+                        await api.admin.deactivateIngrediente(ingrediente['id'].toString());
+                      }
+                      _fetchIngredientes();
                     },
                   ),
                 ],
@@ -396,14 +436,54 @@ class _NutrientesViewState extends State<_NutrientesView> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () {
-                      // TODO: Implementar edición
+                    onPressed: () async {
+                      final newName = await showDialog<String>(
+                        context: context,
+                        builder: (context) {
+                          final controller = TextEditingController(text: nutriente['name'] ?? '');
+                          return AlertDialog(
+                            title: const Text('Editar nutriente'),
+                            content: TextField(
+                              controller: controller,
+                              decoration: const InputDecoration(labelText: 'Nombre'),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, controller.text),
+                                child: const Text('Guardar'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                      if (newName != null && newName.trim().isNotEmpty) {
+                        final api = context.read<NutriAppApi>();
+                        await api.admin.updateNutriente(
+                          nutriente['id'].toString(),
+                          {'name': newName.trim()},
+                        );
+                        _fetchNutrientes();
+                      }
                     },
                   ),
                   IconButton(
-                    icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                    onPressed: () {
-                      // TODO: Implementar eliminación
+                    icon: Icon(
+                      nutriente['estado'] == 'inactivo' ? Icons.restore : Icons.delete,
+                      size: 20,
+                      color: nutriente['estado'] == 'inactivo' ? Colors.green : Colors.red,
+                    ),
+                    onPressed: () async {
+                      final api = context.read<NutriAppApi>();
+                      if (nutriente['estado'] == 'inactivo') {
+                        await api.admin.restoreNutriente(nutriente['id'].toString());
+                      } else {
+                        await api.admin.deactivateNutriente(nutriente['id'].toString());
+                      }
+                      _fetchNutrientes();
                     },
                   ),
                 ],
