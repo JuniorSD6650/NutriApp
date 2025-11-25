@@ -65,6 +65,7 @@ class _IngredientesViewState extends State<_IngredientesView> {
   int _currentPage = 1;
   int _totalPages = 1;
   String? _searchName;
+  String _estado = 'activo';
   final TextEditingController _searchController = TextEditingController();
   @override
   void dispose() {
@@ -88,7 +89,8 @@ class _IngredientesViewState extends State<_IngredientesView> {
       final api = context.read<NutriAppApi>();
       final response = await api.admin.getIngredientes(
         page: _currentPage,
-        name: _searchName?.trim(), // Asegúrate de enviar el nombre correctamente
+        name: _searchName?.trim(),
+        estado: _estado == 'todos' ? '' : _estado, // <-- Cambia null por '' para que el backend no filtre por estado
       );
 
       setState(() {
@@ -146,24 +148,42 @@ class _IngredientesViewState extends State<_IngredientesView> {
   Widget _buildFilters(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              decoration: const InputDecoration(
-                labelText: 'Buscar por nombre',
-                border: OutlineInputBorder(),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar por nombre',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    _searchName = value.isEmpty ? null : value;
+                  },
+                ),
               ),
-              onChanged: (value) {
-                _searchName = value.isEmpty ? null : value;
-              },
-            ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _applyFilters,
+                child: const Text('Aplicar'),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: _applyFilters,
-            child: const Text('Aplicar'),
+          const SizedBox(height: 12),
+          DropdownButton<String>(
+            value: _estado,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(value: 'activo', child: Text('Activos')),
+              DropdownMenuItem(value: 'inactivo', child: Text('Inactivos')),
+              DropdownMenuItem(value: 'todos', child: Text('Todos')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _estado = value);
+            },
           ),
         ],
       ),
@@ -205,56 +225,74 @@ class _IngredientesViewState extends State<_IngredientesView> {
               ),
               DataCell(Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () async {
-                      final newName = await showDialog<String>(
-                        context: context,
-                        builder: (context) {
-                          final controller = TextEditingController(text: ingrediente['name'] ?? '');
-                          return AlertDialog(
-                            title: const Text('Editar ingrediente'),
-                            content: TextField(
-                              controller: controller,
-                              decoration: const InputDecoration(labelText: 'Nombre'),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancelar'),
+                  Opacity(
+                    opacity: ingrediente['estado'] == 'inactivo' ? 0.4 : 1.0,
+                    child: IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: ingrediente['estado'] == 'inactivo' ? null : () async {
+                        final newName = await showDialog<String>(
+                          context: context,
+                          builder: (context) {
+                            final controller = TextEditingController(text: ingrediente['name'] ?? '');
+                            return AlertDialog(
+                              title: const Text('Editar ingrediente'),
+                              content: TextField(
+                                controller: controller,
+                                decoration: const InputDecoration(labelText: 'Nombre'),
                               ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, controller.text),
-                                child: const Text('Guardar'),
-                              ),
-                            ],
-                          );
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, controller.text),
+                                  child: const Text('Guardar'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        if (newName != null && newName.trim().isNotEmpty) {
+                          final api = context.read<NutriAppApi>();
+                          try {
+                            await api.admin.updateIngrediente(
+                              ingrediente['id'].toString(),
+                              {'name': newName.trim()},
+                            );
+                            _fetchIngredientes();
+                          } catch (e) {
+                            final errorMsg = e.toString();
+                            if (errorMsg.contains('ya existe')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Ya existe un ingrediente con ese nombre')),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $errorMsg')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  // Icono de eliminar/recuperar según estado
+                  Builder(
+                    builder: (context) {
+                      final isInactive = ingrediente['deletedAt'] != null;
+                      return IconButton(
+                        icon: Icon(isInactive ? Icons.replay : Icons.delete, color: isInactive ? Colors.green : Colors.red),
+                        tooltip: isInactive ? 'Recuperar' : 'Eliminar',
+                        onPressed: () {
+                          final api = context.read<NutriAppApi>();
+                          if (isInactive) {
+                            api.admin.restoreIngrediente(ingrediente['id']).then((_) => _fetchIngredientes());
+                          } else {
+                            api.admin.deactivateIngrediente(ingrediente['id']).then((_) => _fetchIngredientes());
+                          }
                         },
                       );
-                      if (newName != null && newName.trim().isNotEmpty) {
-                        final api = context.read<NutriAppApi>();
-                        await api.admin.updateIngrediente(
-                          ingrediente['id'].toString(),
-                          {'name': newName.trim()},
-                        );
-                        _fetchIngredientes();
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      ingrediente['estado'] == 'inactivo' ? Icons.restore : Icons.delete,
-                      size: 20,
-                      color: ingrediente['estado'] == 'inactivo' ? Colors.green : Colors.red,
-                    ),
-                    onPressed: () async {
-                      final api = context.read<NutriAppApi>();
-                      if (ingrediente['estado'] == 'inactivo') {
-                        await api.admin.restoreIngrediente(ingrediente['id'].toString());
-                      } else {
-                        await api.admin.deactivateIngrediente(ingrediente['id'].toString());
-                      }
-                      _fetchIngredientes();
                     },
                   ),
                 ],
@@ -291,6 +329,7 @@ class _IngredientesViewState extends State<_IngredientesView> {
               setState(() {
                 _currentPage = 1;
                 _searchName = null;
+                _estado = 'activo';
                 _searchController.clear();
               });
               _fetchIngredientes();
@@ -315,6 +354,7 @@ class _NutrientesViewState extends State<_NutrientesView> {
   int _currentPage = 1;
   int _totalPages = 1;
   String? _searchName;
+  String _estado = 'activo';
 
   @override
   void initState() {
@@ -330,9 +370,10 @@ class _NutrientesViewState extends State<_NutrientesView> {
 
     try {
       final api = context.read<NutriAppApi>();
-      final response = await api.getNutrientes(
+      final response = await api.admin.getNutrientes(
         page: _currentPage,
-        name: _searchName, // Asegúrate de enviar el filtro correctamente
+        name: _searchName,
+        estado: _estado == 'todos' ? '' : _estado, // <-- Cambia null por '' para que el backend no filtre por estado
       );
 
       setState(() {
@@ -390,23 +431,41 @@ class _NutrientesViewState extends State<_NutrientesView> {
   Widget _buildFilters(ThemeData theme) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: TextField(
-              decoration: const InputDecoration(
-                labelText: 'Buscar por nombre',
-                border: OutlineInputBorder(),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  decoration: const InputDecoration(
+                    labelText: 'Buscar por nombre',
+                    border: OutlineInputBorder(),
+                  ),
+                  onChanged: (value) {
+                    _searchName = value.isEmpty ? null : value;
+                  },
+                ),
               ),
-              onChanged: (value) {
-                _searchName = value.isEmpty ? null : value;
-              },
-            ),
+              const SizedBox(width: 12),
+              ElevatedButton(
+                onPressed: _applyFilters,
+                child: const Text('Aplicar'),
+              ),
+            ],
           ),
-          const SizedBox(width: 16),
-          ElevatedButton(
-            onPressed: _applyFilters,
-            child: const Text('Aplicar'),
+          const SizedBox(height: 12),
+          DropdownButton<String>(
+            value: _estado,
+            isExpanded: true,
+            items: const [
+              DropdownMenuItem(value: 'activo', child: Text('Activos')),
+              DropdownMenuItem(value: 'inactivo', child: Text('Inactivos')),
+              DropdownMenuItem(value: 'todos', child: Text('Todos')),
+            ],
+            onChanged: (value) {
+              if (value != null) setState(() => _estado = value);
+            },
           ),
         ],
       ),
@@ -434,56 +493,74 @@ class _NutrientesViewState extends State<_NutrientesView> {
               DataCell(Text(nutriente['unit'] ?? 'Sin unidad')),
               DataCell(Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
-                    onPressed: () async {
-                      final newName = await showDialog<String>(
-                        context: context,
-                        builder: (context) {
-                          final controller = TextEditingController(text: nutriente['name'] ?? '');
-                          return AlertDialog(
-                            title: const Text('Editar nutriente'),
-                            content: TextField(
-                              controller: controller,
-                              decoration: const InputDecoration(labelText: 'Nombre'),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancelar'),
+                  Opacity(
+                    opacity: nutriente['estado'] == 'inactivo' ? 0.4 : 1.0,
+                    child: IconButton(
+                      icon: const Icon(Icons.edit, size: 20),
+                      onPressed: nutriente['estado'] == 'inactivo' ? null : () async {
+                        final newName = await showDialog<String>(
+                          context: context,
+                          builder: (context) {
+                            final controller = TextEditingController(text: nutriente['name'] ?? '');
+                            return AlertDialog(
+                              title: const Text('Editar nutriente'),
+                              content: TextField(
+                                controller: controller,
+                                decoration: const InputDecoration(labelText: 'Nombre'),
                               ),
-                              ElevatedButton(
-                                onPressed: () => Navigator.pop(context, controller.text),
-                                child: const Text('Guardar'),
-                              ),
-                            ],
-                          );
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.pop(context, controller.text),
+                                  child: const Text('Guardar'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                        if (newName != null && newName.trim().isNotEmpty) {
+                          final api = context.read<NutriAppApi>();
+                          try {
+                            await api.admin.updateNutriente(
+                              nutriente['id'].toString(),
+                              {'name': newName.trim()},
+                            );
+                            _fetchNutrientes();
+                          } catch (e) {
+                            final errorMsg = e.toString();
+                            if (errorMsg.contains('ya existe')) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Ya existe un nutriente con ese nombre')),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Error: $errorMsg')),
+                              );
+                            }
+                          }
+                        }
+                      },
+                    ),
+                  ),
+                  // Icono de eliminar/recuperar según estado
+                  Builder(
+                    builder: (context) {
+                      final isInactive = nutriente['deletedAt'] != null;
+                      return IconButton(
+                        icon: Icon(isInactive ? Icons.replay : Icons.delete, color: isInactive ? Colors.green : Colors.red),
+                        tooltip: isInactive ? 'Recuperar' : 'Eliminar',
+                        onPressed: () {
+                          final api = context.read<NutriAppApi>();
+                          if (isInactive) {
+                            api.admin.restoreNutriente(nutriente['id']).then((_) => _fetchNutrientes());
+                          } else {
+                            api.admin.deactivateNutriente(nutriente['id']).then((_) => _fetchNutrientes());
+                          }
                         },
                       );
-                      if (newName != null && newName.trim().isNotEmpty) {
-                        final api = context.read<NutriAppApi>();
-                        await api.admin.updateNutriente(
-                          nutriente['id'].toString(),
-                          {'name': newName.trim()},
-                        );
-                        _fetchNutrientes();
-                      }
-                    },
-                  ),
-                  IconButton(
-                    icon: Icon(
-                      nutriente['estado'] == 'inactivo' ? Icons.restore : Icons.delete,
-                      size: 20,
-                      color: nutriente['estado'] == 'inactivo' ? Colors.green : Colors.red,
-                    ),
-                    onPressed: () async {
-                      final api = context.read<NutriAppApi>();
-                      if (nutriente['estado'] == 'inactivo') {
-                        await api.admin.restoreNutriente(nutriente['id'].toString());
-                      } else {
-                        await api.admin.deactivateNutriente(nutriente['id'].toString());
-                      }
-                      _fetchNutrientes();
                     },
                   ),
                 ],
@@ -519,12 +596,8 @@ class _NutrientesViewState extends State<_NutrientesView> {
               setState(() {
                 _currentPage = 1;
                 _searchName = null;
+                _estado = 'activo';
               });
-              // Limpiar campo de búsqueda si existe
-              final filterField = (context as Element).findAncestorWidgetOfExactType<TextField>();
-              if (filterField != null && filterField.controller != null) {
-                filterField.controller!.clear();
-              }
               _fetchNutrientes();
             },
             child: const Text('Restablecer filtros'),

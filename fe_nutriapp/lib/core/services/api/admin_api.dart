@@ -70,15 +70,15 @@ class AdminApi {
   Future<Map<String, dynamic>> getIngredientes({
     int page = 1,
     String? name,
+    String? estado,
   }) async {
     final queryParams = {
       'page': page.toString(),
       if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      if (estado != null) 'estado': estado,
     };
 
-    final uri = Uri.parse(
-      '/ingredientes',
-    ).replace(queryParameters: queryParams);
+    final uri = Uri.parse('/ingredientes').replace(queryParameters: queryParams);
     return await _apiService.get(uri.toString()) as Map<String, dynamic>;
   }
 
@@ -97,10 +97,12 @@ class AdminApi {
   Future<Map<String, dynamic>> getNutrientes({
     int page = 1,
     String? name,
+    String? estado,
   }) async {
     final queryParams = {
       'page': page.toString(),
       if (name != null) 'name': name,
+      if (estado != null) 'estado': estado,
     };
 
     final uri = Uri.parse('/nutrientes').replace(queryParameters: queryParams);
