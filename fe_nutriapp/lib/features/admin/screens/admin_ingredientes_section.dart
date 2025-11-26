@@ -133,12 +133,6 @@ class _AdminIngredientesSectionState extends State<AdminIngredientesSection> {
                 onPressed: _applyFilters,
                 child: const Text('Aplicar'),
               ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add),
-                label: const Text('Agregar'),
-                onPressed: widget.onAdd,
-              ),
             ],
           ),
           const SizedBox(height: 12),

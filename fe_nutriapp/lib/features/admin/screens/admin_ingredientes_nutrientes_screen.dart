@@ -33,7 +33,41 @@ class _AdminIngredientesNutrientesScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gestión de Ingredientes y Nutrientes'),
+        title: AnimatedBuilder(
+          animation: _tabController,
+          builder: (context, _) {
+            final title = _tabController.index == 0
+                ? 'Gestión de ingredientes'
+                : 'Gestión de nutrientes';
+            return Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(title),
+                IconButton(
+                  icon: const Icon(Icons.add),
+                  tooltip: _tabController.index == 0 ? 'Agregar ingrediente' : 'Agregar nutriente',
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text(_tabController.index == 0 ? 'Agregar ingrediente' : 'Agregar nutriente'),
+                        content: Text(_tabController.index == 0
+                            ? 'Aquí irá el formulario para agregar ingredientes.'
+                            : 'Aquí irá el formulario para agregar nutrientes.'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Cerrar'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
