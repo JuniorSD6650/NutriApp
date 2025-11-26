@@ -29,6 +29,20 @@ class _AdminIngredientesNutrientesScreenState
     super.dispose();
   }
 
+  Key _ingredientesViewKey = UniqueKey();
+  Key _nutrientesViewKey = UniqueKey();
+
+  void _refreshIngredientes() {
+    setState(() {
+      _ingredientesViewKey = UniqueKey();
+    });
+  }
+  void _refreshNutrientes() {
+    setState(() {
+      _nutrientesViewKey = UniqueKey();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -46,22 +60,102 @@ class _AdminIngredientesNutrientesScreenState
                 IconButton(
                   icon: const Icon(Icons.add),
                   tooltip: _tabController.index == 0 ? 'Agregar ingrediente' : 'Agregar nutriente',
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (context) => AlertDialog(
-                        title: Text(_tabController.index == 0 ? 'Agregar ingrediente' : 'Agregar nutriente'),
-                        content: Text(_tabController.index == 0
-                            ? 'Aquí irá el formulario para agregar ingredientes.'
-                            : 'Aquí irá el formulario para agregar nutrientes.'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('Cerrar'),
+                  onPressed: () async {
+                    if (_tabController.index == 0) {
+                      final nombreController = TextEditingController();
+                      final result = await showDialog<String>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Agregar ingrediente'),
+                          content: TextField(
+                            controller: nombreController,
+                            decoration: const InputDecoration(labelText: 'Nombre del ingrediente'),
                           ),
-                        ],
-                      ),
-                    );
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancelar'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (nombreController.text.trim().isNotEmpty) {
+                                  Navigator.pop(context, nombreController.text.trim());
+                                }
+                              },
+                              child: const Text('Agregar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (result != null && result.isNotEmpty) {
+                        final api = context.read<NutriAppApi>().admin;
+                        try {
+                          await api.createIngrediente({'name': result, 'nutrientes': []});
+                          _refreshIngredientes();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Ingrediente creado correctamente')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.toString()}')),
+                          );
+                        }
+                      }
+                    } else {
+                      final nombreController = TextEditingController();
+                      final unidadController = TextEditingController();
+                      final result = await showDialog<Map<String, String>>(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Agregar nutriente'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              TextField(
+                                controller: nombreController,
+                                decoration: const InputDecoration(labelText: 'Nombre del nutriente'),
+                              ),
+                              const SizedBox(height: 12),
+                              TextField(
+                                controller: unidadController,
+                                decoration: const InputDecoration(labelText: 'Unidad'),
+                              ),
+                            ],
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('Cancelar'),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {
+                                if (nombreController.text.trim().isNotEmpty && unidadController.text.trim().isNotEmpty) {
+                                  Navigator.pop(context, {
+                                    'name': nombreController.text.trim(),
+                                    'unit': unidadController.text.trim(),
+                                  });
+                                }
+                              },
+                              child: const Text('Agregar'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (result != null && result['name']!.isNotEmpty && result['unit']!.isNotEmpty) {
+                        final api = context.read<NutriAppApi>().admin;
+                        try {
+                          await api.createNutriente({'name': result['name'], 'unit': result['unit']});
+                          _refreshNutrientes();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Nutriente creado correctamente')),
+                          );
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Error: ${e.toString()}')),
+                          );
+                        }
+                      }
+                    }
                   },
                 ),
               ],
@@ -79,8 +173,8 @@ class _AdminIngredientesNutrientesScreenState
       body: TabBarView(
         controller: _tabController,
         children: [
-          _IngredientesView(),
-          _NutrientesView(),
+          _IngredientesView(key: _ingredientesViewKey),
+          _NutrientesView(key: _nutrientesViewKey),
         ],
       ),
     );
@@ -89,6 +183,8 @@ class _AdminIngredientesNutrientesScreenState
 
 // Vista de Ingredientes
 class _IngredientesView extends StatefulWidget {
+  const _IngredientesView({Key? key}) : super(key: key);
+
   @override
   State<_IngredientesView> createState() => _IngredientesViewState();
 }
@@ -142,6 +238,8 @@ class _IngredientesViewState extends State<_IngredientesView> {
 
 // Vista de Nutrientes
 class _NutrientesView extends StatefulWidget {
+  const _NutrientesView({Key? key}) : super(key: key);
+
   @override
   State<_NutrientesView> createState() => _NutrientesViewState();
 }

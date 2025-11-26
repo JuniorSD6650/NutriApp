@@ -211,4 +211,16 @@ class AdminApi {
       final response = await _apiService.post('/platillos', createPlatilloDto);
       return response as Map<String, dynamic>;
     }
+
+  // Crear ingrediente
+  Future<Map<String, dynamic>> createIngrediente(Map<String, dynamic> createIngredienteDto) async {
+    final response = await _apiService.post('/ingredientes', createIngredienteDto);
+    return response as Map<String, dynamic>;
+  }
+
+  // Crear nutriente
+  Future<Map<String, dynamic>> createNutriente(Map<String, dynamic> createNutrienteDto) async {
+    final response = await _apiService.post('/nutrientes', createNutrienteDto);
+    return response as Map<String, dynamic>;
+  }
 }
