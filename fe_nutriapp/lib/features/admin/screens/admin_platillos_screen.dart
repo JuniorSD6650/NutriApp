@@ -397,22 +397,41 @@ class _AdminPlatillosScreenState extends State<AdminPlatillosScreen> {
                       },
                     ),
                   if (isInactive)
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 20, color: Colors.green),
-                      onPressed: () async {
-                        try {
-                          final adminApi = context.read<NutriAppApi>().admin;
-                          await adminApi.restorePlatillo(platillo['id'].toString());
-                          if (mounted) _fetchPlatillos();
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Error al reactivar: ${e.toString()}')),
-                            );
+                      IconButton(
+                        icon: const Icon(Icons.refresh, size: 20, color: Colors.green),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Reactivar platillo'),
+                              content: Text('¿Seguro que deseas reactivar "${platillo['nombre']}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Reactivar'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            try {
+                              final adminApi = context.read<NutriAppApi>().admin;
+                              await adminApi.restorePlatillo(platillo['id'].toString());
+                              if (mounted) _fetchPlatillos();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error al reactivar: ${e.toString()}')),
+                                );
+                              }
+                            }
                           }
-                        }
-                      },
-                    ),
+                        },
+                      ),
                 ],
               )),
             ]);

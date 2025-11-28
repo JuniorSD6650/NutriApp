@@ -253,13 +253,51 @@ class _AdminIngredientesSectionState extends State<AdminIngredientesSection> {
                     onPressed: () async {
                       final api = context.read<NutriAppApi>().admin;
                       if (isInactive) {
-                        await api.restoreIngrediente(ingrediente['id'].toString());
-                        _fetchIngredientes();
-                        if (widget.onDelete != null) widget.onDelete!(ingrediente);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Recuperar ingrediente'),
+                            content: Text('¿Seguro que deseas recuperar "${ingrediente['name']}"?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Recuperar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await api.restoreIngrediente(ingrediente['id'].toString());
+                          _fetchIngredientes();
+                          if (widget.onDelete != null) widget.onDelete!(ingrediente);
+                        }
                       } else {
-                        await api.deactivateIngrediente(ingrediente['id'].toString());
-                        _fetchIngredientes();
-                        if (widget.onDelete != null) widget.onDelete!(ingrediente);
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            title: const Text('Eliminar ingrediente'),
+                            content: Text('¿Seguro que deseas eliminar "${ingrediente['name']}"?'),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(false),
+                                child: const Text('Cancelar'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.of(ctx).pop(true),
+                                child: const Text('Eliminar'),
+                              ),
+                            ],
+                          ),
+                        );
+                        if (confirm == true) {
+                          await api.deactivateIngrediente(ingrediente['id'].toString());
+                          _fetchIngredientes();
+                          if (widget.onDelete != null) widget.onDelete!(ingrediente);
+                        }
                       }
                     },
                   ),

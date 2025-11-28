@@ -242,13 +242,51 @@ class _AdminNutrientesSectionState extends State<AdminNutrientesSection> {
                         onPressed: () async {
                           final api = context.read<NutriAppApi>().admin;
                           if (isInactive) {
-                            await api.restoreNutriente(nutriente['id']);
-                            _fetchNutrientes();
-                            if (widget.onDelete != null) widget.onDelete!(nutriente);
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Recuperar nutriente'),
+                                content: Text('¿Seguro que deseas recuperar "${nutriente['name']}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Recuperar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await api.restoreNutriente(nutriente['id']);
+                              _fetchNutrientes();
+                              if (widget.onDelete != null) widget.onDelete!(nutriente);
+                            }
                           } else {
-                            await api.deactivateNutriente(nutriente['id']);
-                            _fetchNutrientes();
-                            if (widget.onDelete != null) widget.onDelete!(nutriente);
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Eliminar nutriente'),
+                                content: Text('¿Seguro que deseas eliminar "${nutriente['name']}"?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.of(ctx).pop(false),
+                                    child: const Text('Cancelar'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.of(ctx).pop(true),
+                                    child: const Text('Eliminar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm == true) {
+                              await api.deactivateNutriente(nutriente['id']);
+                              _fetchNutrientes();
+                              if (widget.onDelete != null) widget.onDelete!(nutriente);
+                            }
                           }
                         },
                       );

@@ -164,6 +164,7 @@ export class IngredientesService {
 
     // Usar queryBuilder para incluir relaciones ingrediente-nutriente soft deleted y nutrientes soft deleted
     const qb = this.ingredienteRepository.createQueryBuilder('ingrediente')
+      .withDeleted() // <-- Permite incluir ingredientes soft-deleted
       .leftJoinAndSelect('ingrediente.nutrientes', 'ingredienteNutriente', undefined, { withDeleted: true })
       .leftJoinAndSelect('ingredienteNutriente.nutriente', 'nutriente', undefined, { withDeleted: true })
       .where('ingrediente.id = :id', { id });
