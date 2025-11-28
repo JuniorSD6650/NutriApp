@@ -395,22 +395,24 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
         columns: const [
           DataColumn(label: Text('Nombre')),
           DataColumn(label: Text('Rol')),
-          DataColumn(label: Text('Estado')),
           DataColumn(label: Text('Acciones')),
         ],
         rows: _usuarios.map((user) {
           final isActive = user['isActive'] == true;
 
           return DataRow(cells: [
-            DataCell(Text(user['name'] ?? 'Sin nombre')),
-            DataCell(Text(user['role'] ?? 'Desconocido')),
-            DataCell(
-              Icon(
-                isActive ? Icons.check_circle : Icons.cancel,
-                color: isActive ? Colors.green : Colors.red,
-                size: 18,
-              ),
-            ),
+            DataCell(Text(
+              user['name'] ?? 'Sin nombre',
+              style: !isActive
+                  ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
+                  : null,
+            )),
+            DataCell(Text(
+              user['role'] ?? 'Desconocido',
+              style: !isActive
+                  ? const TextStyle(color: Colors.grey, fontStyle: FontStyle.italic)
+                  : null,
+            )),
             DataCell(Row(
               children: [
                 IconButton(
@@ -424,14 +426,52 @@ class _AdminUsuariosScreenState extends State<AdminUsuariosScreen> {
                         icon: const Icon(Icons.delete, size: 20, color: AppColors.primary),
                         tooltip: 'Desactivar usuario',
                         onPressed: () async {
-                          await _deactivateUsuario(user['id'] ?? '');
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Desactivar usuario'),
+                              content: Text('¿Seguro que deseas desactivar a "${user['name']}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Desactivar'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await _deactivateUsuario(user['id'] ?? '');
+                          }
                         },
                       )
                     : IconButton(
                         icon: const Icon(Icons.restore, size: 20, color: Colors.green),
                         tooltip: 'Restaurar usuario',
                         onPressed: () async {
-                          await _restoreUsuario(user['id'] ?? '');
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Restaurar usuario'),
+                              content: Text('¿Seguro que deseas restaurar a "${user['name']}"?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('Cancelar'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Restaurar'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirm == true) {
+                            await _restoreUsuario(user['id'] ?? '');
+                          }
                         },
                       ),
               ],
