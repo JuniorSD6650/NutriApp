@@ -19,20 +19,33 @@ import { FiltroEstado } from '../common/enums/filtro-estado.enum'; // <-- IMPORT
 export class IngredientesService {
     async addNutrienteToIngrediente(ingredienteId: string, nutrienteId: string, value_per_100g: number) {
       const ingrediente = await this.findOne(ingredienteId);
-      const nutriente = await this.nutrienteRepository.findOneBy({ id: nutrienteId });
+      // Buscar el nutriente incluyendo los soft-deleted
+      const nutriente = await this.nutrienteRepository.findOne({
+        where: { id: nutrienteId },
+        withDeleted: true,
+      });
       if (!nutriente) {
         throw new NotFoundException(`Nutriente con ID ${nutrienteId} no encontrado`);
       }
-      // Verificar si ya existe la relación
+      // Verificar si ya existe la relación, incluyendo soft-deleted
       const existe = await this.ingredienteNutrienteRepository.findOne({
-        where: { ingrediente: { id: ingredienteId }, nutriente: { id: nutrienteId } }
+        where: { ingrediente: { id: ingredienteId }, nutriente: { id: nutrienteId } },
+        withDeleted: true,
       });
       if (existe) {
-        throw new ConflictException('El nutriente ya está asociado a este ingrediente');
+        // Si existe pero está soft-deleted, restaurar la relación y actualizar el valor
+        if ((existe as any).deletedAt) {
+          await this.ingredienteNutrienteRepository.restore(existe.id);
+        }
+        existe.value_per_100g = value_per_100g;
+        await this.ingredienteNutrienteRepository.save(existe);
+        return this.findOne(ingredienteId);
       }
+      // Si no existe, crear nueva relación
       const nuevaRelacion = this.ingredienteNutrienteRepository.create({
         ingrediente,
         nutriente,
+        nutriente_id: nutriente.id, // <-- Asignar el id explícitamente
         value_per_100g,
       });
       await this.ingredienteNutrienteRepository.save(nuevaRelacion);
@@ -149,9 +162,9 @@ export class IngredientesService {
       where.deletedAt = IsNull();
     }
 
-    // Usar queryBuilder para incluir nutrientes soft deleted
+    // Usar queryBuilder para incluir relaciones ingrediente-nutriente soft deleted y nutrientes soft deleted
     const qb = this.ingredienteRepository.createQueryBuilder('ingrediente')
-      .leftJoinAndSelect('ingrediente.nutrientes', 'ingredienteNutriente')
+      .leftJoinAndSelect('ingrediente.nutrientes', 'ingredienteNutriente', undefined, { withDeleted: true })
       .leftJoinAndSelect('ingredienteNutriente.nutriente', 'nutriente', undefined, { withDeleted: true })
       .where('ingrediente.id = :id', { id });
     if (!includeInactive) {
@@ -160,6 +173,24 @@ export class IngredientesService {
     const ingrediente = await qb.getOne();
     if (!ingrediente) {
       throw new NotFoundException(`Ingrediente con ID ${id} no encontrado`);
+    }
+    // Post-procesar para rellenar nutrientes soft-deleted si vienen como null
+    if (ingrediente.nutrientes && Array.isArray(ingrediente.nutrientes)) {
+      for (const rel of ingrediente.nutrientes) {
+        // Si el nutriente está null y existe rel.nutriente_id, buscar manualmente
+        if (!rel.nutriente && rel.hasOwnProperty('nutriente_id')) {
+          const nutrienteId = rel['nutriente_id'];
+          if (nutrienteId) {
+            const nutriente = await this.nutrienteRepository.findOne({
+              where: { id: nutrienteId },
+              withDeleted: true,
+            });
+            if (nutriente) {
+              rel.nutriente = nutriente;
+            }
+          }
+        }
+      }
     }
     return ingrediente;
   }

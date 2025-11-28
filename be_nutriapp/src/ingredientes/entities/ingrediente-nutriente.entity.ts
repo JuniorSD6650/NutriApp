@@ -1,5 +1,5 @@
 // src/ingredientes/entities/ingrediente-nutriente.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
 import { Ingrediente } from './ingrediente.entity';
 import { Nutriente } from './nutriente.entity';
 
@@ -18,10 +18,14 @@ export class IngredienteNutriente {
   )
   ingrediente: Ingrediente;
 
+  @Column({ name: 'nutriente_id', type: 'uuid' })
+  nutriente_id: string;
+
   @ManyToOne(
     () => Nutriente,
     (nutriente) => nutriente.ingredientes,
-    { onDelete: 'CASCADE', eager: true } // <-- AÑADIR eager: true
+    { onDelete: 'CASCADE', eager: true }
   )
+  @JoinColumn({ name: 'nutriente_id' })
   nutriente: Nutriente;
 }

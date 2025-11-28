@@ -289,6 +289,7 @@ export const runSeeders = async (dataSource: DataSource) => {
             ingredienteNutrienteRepo.create({
               ingrediente,
               nutriente,
+              nutriente_id: nutriente.id, // <-- Asignar el campo explícitamente
               value_per_100g: in_nut.value,
             })
           );
