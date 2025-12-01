@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
 import 'package:fe_nutriapp/core/services/auth_service.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
+import 'package:fe_nutriapp/features/medico/screens/medico_paciente_detail_screen.dart';
 import 'package:jwt_decode/jwt_decode.dart';
 
 class MedicoPacientesScreen extends StatefulWidget {
@@ -122,12 +123,12 @@ class _MedicoPacientesScreenState extends State<MedicoPacientesScreen> {
         leading: CircleAvatar(
           backgroundColor: AppColors.primary,
           child: Text(
-            inicial, // <-- USAR INICIAL VALIDADA
+            inicial,
             style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
           ),
         ),
         title: Text(
-          nombre, // <-- USAR NOMBRE VALIDADO
+          nombre,
           style: theme.textTheme.titleMedium,
         ),
         subtitle: Column(
@@ -151,8 +152,11 @@ class _MedicoPacientesScreenState extends State<MedicoPacientesScreen> {
           color: AppColors.textSecondary,
         ),
         onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ver detalles de $nombre')),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MedicoPacienteDetailScreen(paciente: paciente),
+            ),
           );
         },
       ),

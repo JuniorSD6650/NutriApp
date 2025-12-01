@@ -2,6 +2,14 @@ import 'package:http/http.dart' as http;
 import '../api_service.dart';
 
 class MedicoApi {
+    Future<List<dynamic>> getMetasPaciente(String pacienteId) async {
+      if (_apiService.token == null) throw Exception('No estás autenticado.');
+      final endpoint = '/metas/paciente/$pacienteId';
+      final response = await _apiService.get(endpoint);
+      if (response is List) return response;
+      if (response is Map && response['data'] is List) return response['data'];
+      return [];
+    }
   final ApiService _apiService;
 
   MedicoApi(this._apiService);
