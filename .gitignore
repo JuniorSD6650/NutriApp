@@ -1,2 +1,3 @@
 *.txt
 test-api.http
+*.md
