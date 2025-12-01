@@ -3,6 +3,14 @@ import 'package:intl/intl.dart';
 import '../api_service.dart';
 
 class RegistrosApi {
+    Future<List<dynamic>> getRegistrosConsumoPaciente(String pacienteId, {int limit = 5}) async {
+      if (_apiService.token == null) throw Exception('No estás autenticado.');
+      final endpoint = '/registros/consumo/paciente/$pacienteId?limit=$limit';
+      final response = await _apiService.get(endpoint);
+      if (response is List) return response;
+      if (response is Map && response['data'] is List) return response['data'];
+      return [];
+    }
   final ApiService _apiService;
 
   RegistrosApi(this._apiService);

@@ -14,6 +14,9 @@ class MedicoPacienteDetailScreen extends StatefulWidget {
 }
 
 class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen> {
+        List<dynamic> comidasRecientes = [];
+        bool isLoadingComidas = true;
+        String? comidasError;
       Widget _legendDot(Color? color, String label, {bool dark = false}) {
         return Row(
           mainAxisSize: MainAxisSize.min,
@@ -43,6 +46,28 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
   void initState() {
     super.initState();
     _fetchMetas();
+    _fetchComidasRecientes();
+  }
+
+  Future<void> _fetchComidasRecientes() async {
+    setState(() {
+      isLoadingComidas = true;
+      comidasError = null;
+    });
+    try {
+      final nutriApi = context.read<NutriAppApi>();
+      final pacienteId = widget.paciente['id'].toString();
+      final comidas = await nutriApi.registros.getRegistrosConsumoPaciente(pacienteId, limit: 5);
+      setState(() {
+        comidasRecientes = comidas;
+        isLoadingComidas = false;
+      });
+    } catch (e) {
+      setState(() {
+        comidasError = e.toString().replaceFirst('Exception: ', '');
+        isLoadingComidas = false;
+      });
+    }
   }
 
   Future<void> _fetchMetas() async {
@@ -137,7 +162,42 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
             const SizedBox(height: 12),
             Text('Comidas recientes', style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
-            _buildPlaceholder('Aquí se mostrarán las comidas del paciente.'),
+            if (isLoadingComidas)
+              const Center(child: CircularProgressIndicator())
+            else if (comidasError != null)
+              _buildPlaceholder('Error: $comidasError')
+            else if (comidasRecientes.isEmpty)
+              _buildPlaceholder('No hay registros de comidas recientes.')
+            else
+              Column(
+                children: comidasRecientes.map((comida) {
+                  final nombre = comida['platillo']?['nombre'] ?? comida['descripcion'] ?? 'Sin nombre';
+                  final tipo = comida['tipo_comida'] ?? '-';
+                  final fecha = comida['fecha'] ?? '';
+                  final porciones = comida['porciones']?.toString() ?? '1';
+                  final foto = comida['foto'];
+                  return Card(
+                    margin: const EdgeInsets.symmetric(vertical: 6),
+                    child: ListTile(
+                      leading: foto != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                foto.startsWith('http') ? foto : 'https://23288268fa31.ngrok-free.app$foto',
+                                width: 48,
+                                height: 48,
+                                fit: BoxFit.cover,
+                                errorBuilder: (ctx, err, stack) => const Icon(Icons.fastfood),
+                              ),
+                            )
+                          : const Icon(Icons.fastfood, size: 32),
+                      title: Text(nombre, style: theme.textTheme.titleMedium),
+                      subtitle: Text('Tipo: $tipo | Porciones: $porciones'),
+                      trailing: Text(fecha.toString().substring(0, 10)),
+                    ),
+                  );
+                }).toList(),
+              ),
             const SizedBox(height: 24),
             Divider(),
             const SizedBox(height: 12),
