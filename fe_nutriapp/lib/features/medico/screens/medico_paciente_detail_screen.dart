@@ -383,9 +383,203 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
             const SizedBox(height: 24),
             Divider(),
             const SizedBox(height: 12),
-            Text('Consumo de hierro', style: theme.textTheme.titleMedium),
+            Text('Estadísticas de hierro', style: theme.textTheme.titleMedium),
+            const SizedBox(height: 16),
+            if (isLoadingMetas)
+              const Center(child: CircularProgressIndicator())
+            else if (metasError != null)
+              _buildPlaceholder('Error al cargar estadísticas: $metasError')
+            else if (metas.isEmpty)
+              _buildPlaceholder('No hay metas registradas aún')
+            else
+              _buildEstadisticasHierro(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEstadisticasHierro() {
+    // Filtrar solo metas pasadas (no futuras)
+    final metasPasadas = metas.where((m) {
+      final fecha = DateTime.tryParse(m['fecha'] ?? '');
+      if (fecha == null) return false;
+      final hoy = DateTime.now();
+      return fecha.isBefore(hoy) || (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day);
+    }).toList();
+
+    if (metasPasadas.isEmpty) {
+      return _buildPlaceholder('No hay datos históricos disponibles');
+    }
+
+    // Calcular estadísticas
+    int diasCompletados = metasPasadas.where((m) => m['completada'] == true).length;
+    int diasTotales = metasPasadas.length;
+    double porcentajeCompletado = diasTotales > 0 ? (diasCompletados / diasTotales * 100) : 0;
+
+    double promedioObjetivo = 0;
+    double promedioConsumido = 0;
+    for (var meta in metasPasadas) {
+      promedioObjetivo += (meta['hierroObjetivo'] ?? 0).toDouble();
+      promedioConsumido += (meta['hierroConsumido'] ?? 0).toDouble();
+    }
+    promedioObjetivo = diasTotales > 0 ? promedioObjetivo / diasTotales : 0;
+    promedioConsumido = diasTotales > 0 ? promedioConsumido / diasTotales : 0;
+
+    // Calcular racha actual (días consecutivos completados hasta hoy)
+    int rachaActual = 0;
+    final metasOrdenadas = metasPasadas.toList()
+      ..sort((a, b) {
+        final fechaA = DateTime.parse(a['fecha']);
+        final fechaB = DateTime.parse(b['fecha']);
+        return fechaB.compareTo(fechaA); // Más reciente primero
+      });
+
+    for (var meta in metasOrdenadas) {
+      if (meta['completada'] == true) {
+        rachaActual++;
+      } else {
+        break;
+      }
+    }
+
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Column(
+      children: [
+        // Tarjeta de porcentaje de cumplimiento
+        Card(
+          color: isDark ? theme.cardColor : Colors.white,
+          elevation: 2,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Cumplimiento', style: theme.textTheme.titleSmall),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${porcentajeCompletado.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: porcentajeCompletado >= 80 ? Colors.green : 
+                                   porcentajeCompletado >= 50 ? Colors.orange : Colors.red,
+                          ),
+                        ),
+                        Text(
+                          '$diasCompletados de $diasTotales días',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      porcentajeCompletado >= 80 ? Icons.emoji_events :
+                      porcentajeCompletado >= 50 ? Icons.trending_up : Icons.info_outline,
+                      size: 64,
+                      color: porcentajeCompletado >= 80 ? Colors.amber :
+                             porcentajeCompletado >= 50 ? Colors.orange : Colors.grey,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Grid de estadísticas
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.bolt,
+                iconColor: Colors.orange,
+                label: 'Promedio objetivo',
+                value: '${promedioObjetivo.toStringAsFixed(1)} mg',
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.restaurant,
+                iconColor: Colors.blue,
+                label: 'Promedio consumido',
+                value: '${promedioConsumido.toStringAsFixed(1)} mg',
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.local_fire_department,
+                iconColor: Colors.red,
+                label: 'Racha actual',
+                value: '$rachaActual ${rachaActual == 1 ? "día" : "días"}',
+                isDark: isDark,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildStatCard(
+                icon: Icons.calendar_today,
+                iconColor: Colors.purple,
+                label: 'Días registrados',
+                value: '$diasTotales',
+                isDark: isDark,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required bool isDark,
+  }) {
+    return Card(
+      color: isDark ? Theme.of(context).cardColor : Colors.white,
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: iconColor, size: 28),
             const SizedBox(height: 8),
-            _buildPlaceholder('Aquí se mostrarán estadísticas de hierro.'),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
           ],
         ),
       ),
