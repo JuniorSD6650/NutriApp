@@ -73,6 +73,18 @@
             android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver"
             android:exported="false" />
         
+        <!-- Widget de racha -->
+        <receiver 
+            android:name=".RachaWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/racha_widget_info" />
+        </receiver>
+        
     </application>
     
     <queries>

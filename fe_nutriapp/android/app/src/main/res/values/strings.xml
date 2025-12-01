@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">NutriMama</string>
+    <string name="widget_description">Muestra tu racha de días completados</string>
+</resources>

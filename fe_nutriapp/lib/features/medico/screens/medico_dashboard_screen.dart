@@ -5,6 +5,7 @@ import 'package:fe_nutriapp/core/services/nutriapp_api.dart';
 import 'package:fe_nutriapp/core/services/auth_service.dart';
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:jwt_decode/jwt_decode.dart';
+import 'package:fe_nutriapp/core/services/widget_service.dart';
 
 class MedicoDashboardScreen extends StatefulWidget {
   const MedicoDashboardScreen({super.key});
@@ -22,6 +23,24 @@ class _MedicoDashboardScreenState extends State<MedicoDashboardScreen> {
   void initState() {
     super.initState();
     _fetchEstadisticas();
+    _updateWidget();
+  }
+
+  Future<void> _updateWidget() async {
+    try {
+      final api = context.read<NutriAppApi>();
+      final userData = await api.auth.getProfile();
+      final nombre = userData['name'] ?? 'Médico';
+      final rol = userData['role'] ?? 'medico';
+
+      await WidgetService.updateWidget(
+        rachaActual: 0,
+        nombrePaciente: nombre,
+        rol: rol,
+      );
+    } catch (e) {
+      // Silenciar error del widget
+    }
   }
 
   Future<void> _fetchEstadisticas() async {

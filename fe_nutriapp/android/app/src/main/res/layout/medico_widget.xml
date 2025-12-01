@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_container"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/widget_background_medico"
+    android:gravity="center"
+    android:clickable="true"
+    android:focusable="true"
+    android:elevation="8dp">
+
+    <!-- Logo o ícono de la app -->
+    <ImageView
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:src="@drawable/ic_fire"
+        android:layout_marginBottom="12dp"
+        android:elevation="4dp"/>
+
+    <!-- Título NutriMama -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="NutriMama"
+        android:textSize="24sp"
+        android:textColor="#FFFFFF"
+        android:textStyle="bold"
+        android:letterSpacing="0.1"
+        android:layout_marginBottom="8dp"
+        android:shadowColor="#80000000"
+        android:shadowDx="0"
+        android:shadowDy="2"
+        android:shadowRadius="4"/>
+
+    <!-- Nombre del profesional -->
+    <TextView
+        android:id="@+id/widget_nombre"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Dr. Usuario"
+        android:textSize="16sp"
+        android:textColor="#FFFFFF"
+        android:alpha="0.95"
+        android:layout_marginBottom="4dp"/>
+
+    <!-- Rol del usuario -->
+    <TextView
+        android:id="@+id/widget_rol"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Médico"
+        android:textSize="14sp"
+        android:textColor="#FFFFFF"
+        android:alpha="0.85"
+        android:textStyle="italic"
+        android:layout_marginBottom="16dp"/>
+
+    <!-- Mensaje -->
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Toca para abrir"
+        android:textSize="12sp"
+        android:textColor="#FFFFFF"
+        android:alpha="0.75"/>
+
+</LinearLayout>

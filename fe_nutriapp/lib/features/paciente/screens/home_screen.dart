@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:fe_nutriapp/core/services/widget_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -143,11 +144,56 @@ class _HomeScreenState extends State<HomeScreen> {
         _todasLasMetas = metas;
         _isLoadingMetas = false;
       });
+      
+      // Actualizar el widget con la racha actual
+      _actualizarWidget(metas);
     } catch (e) {
       setState(() {
         _isLoadingMetas = false;
       });
     }
+  }
+
+  Future<void> _actualizarWidget(List<dynamic> metas) async {
+    // Calcular racha actual
+    final metasPasadas = metas.where((m) {
+      final fecha = DateTime.tryParse(m['fecha'] ?? '');
+      if (fecha == null) return false;
+      final hoy = DateTime.now();
+      return fecha.isBefore(hoy) || (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day);
+    }).toList();
+
+    if (metasPasadas.isEmpty) return;
+
+    // Ordenar de más reciente a más antiguo
+    final metasOrdenadas = metasPasadas.toList()
+      ..sort((a, b) {
+        final fechaA = DateTime.parse(a['fecha']);
+        final fechaB = DateTime.parse(b['fecha']);
+        return fechaB.compareTo(fechaA);
+      });
+
+    // Contar racha
+    int rachaActual = 0;
+    for (var meta in metasOrdenadas) {
+      if (meta['completada'] == true) {
+        rachaActual++;
+      } else {
+        break;
+      }
+    }
+
+    // Obtener nombre del usuario
+    final userData = await context.read<NutriAppApi>().auth.getProfile();
+    final nombre = userData['name'] ?? 'Usuario';
+    final rol = userData['role'] ?? 'paciente';
+
+    // Actualizar widget
+    await WidgetService.updateWidget(
+      rachaActual: rachaActual,
+      nombrePaciente: nombre,
+      rol: rol,
+    );
   }  Future<void> _fetchSummary() async {
     setState(() {
       _isLoading = true;
