@@ -26,9 +26,11 @@ export class MetasController {
     return this.metasService.crearMeta(medicoId, dto);
   }
 
-  @Get('paciente/:pacienteId')
-  @Roles(Role.MEDICO, Role.PACIENTE)
-  async obtenerMetasPorPaciente(@Param('pacienteId') pacienteId: string) {
+  @Get('mis-metas')
+  @Roles(Role.PACIENTE)
+  async obtenerMisMetas(@Req() req) {
+    const pacienteId = req.user?.sub || req.user?.id;
+    if (!pacienteId) throw new Error('No se pudo determinar el id del paciente autenticado');
     return this.metasService.obtenerMetasPorPaciente(pacienteId);
   }
 
@@ -43,5 +45,11 @@ export class MetasController {
 
     // Pasar la fecha al servicio
     return this.metasService.obtenerMetaActivaPorPaciente(pacienteId, fecha);
+  }
+
+  @Get('paciente/:pacienteId')
+  @Roles(Role.MEDICO, Role.PACIENTE)
+  async obtenerMetasPorPaciente(@Param('pacienteId') pacienteId: string) {
+    return this.metasService.obtenerMetasPorPaciente(pacienteId);
   }
 }

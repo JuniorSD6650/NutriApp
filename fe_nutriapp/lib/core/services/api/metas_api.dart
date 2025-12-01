@@ -20,4 +20,13 @@ class MetasApi {
 
     return _apiService.processResponse(response);
   }
+
+  Future<List<dynamic>> getTodasMisMetas() async {
+    if (_apiService.token == null) throw Exception('No estás autenticado.');
+    final endpoint = '/metas/mis-metas';
+    final response = await _apiService.get(endpoint);
+    if (response is List) return response;
+    if (response is Map && response['data'] is List) return response['data'];
+    return [];
+  }
 }

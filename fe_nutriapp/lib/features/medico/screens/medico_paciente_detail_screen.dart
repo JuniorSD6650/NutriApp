@@ -216,6 +216,7 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
                 focusedDay: _focusedDay,
                 selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                 calendarFormat: CalendarFormat.month,
+                availableGestures: AvailableGestures.horizontalSwipe,
                 onDaySelected: (selectedDay, focusedDay) {
                   setState(() {
                     _selectedDay = selectedDay;

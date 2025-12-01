@@ -5,6 +5,7 @@ import 'package:pie_chart/pie_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:fe_nutriapp/core/services/nutriapp_api.dart'; // <-- CAMBIO
 import 'package:fe_nutriapp/core/theme/app_colors.dart';
+import 'package:table_calendar/table_calendar.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -18,14 +19,136 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _errorMessage;
   Map<String, dynamic>? _summaryData;
   DateTime _selectedDate = DateTime.now();
+  
+  // Estado para todas las metas del paciente
+  List<dynamic> _todasLasMetas = [];
+  bool _isLoadingMetas = true;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  // --- LEYENDA DE COLORES ---
+  Widget _legendDot(Color? color, String label, {bool dark = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 16,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: dark ? Colors.white24 : Colors.black26),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: TextStyle(fontSize: 12, color: dark ? Colors.white : Colors.black)),
+      ],
+    );
+  }
+
+  // --- CALENDARIO DE METAS DIARIAS ---
+  Widget _buildMetasDiariasCalendar(BuildContext context, Map<String, dynamic> data) {
+      final theme = Theme.of(context);
+      final isDark = theme.brightness == Brightness.dark;
+      final fechaMeta = data['fecha'] ?? DateTime.now().toString().substring(0, 10);
+      final hierroObjetivo = (data['hierroObjetivo'] ?? 0.0).toDouble();
+      final hierroConsumido = (data['hierroConsumido'] ?? 0.0).toDouble();
+      final completada = data['completada'] == true;
+      final metaDate = DateTime.tryParse(fechaMeta) ?? DateTime.now();
+
+      Color? bgColor;
+      Color? textColor;
+      IconData icon;
+      String estado;
+      if (metaDate.isAfter(DateTime.now())) {
+        bgColor = isDark ? Colors.blue[900] : Colors.blue[100];
+        textColor = isDark ? Colors.white : Colors.black;
+        icon = Icons.schedule;
+        estado = 'Meta futura';
+      } else if (completada) {
+        bgColor = isDark ? Colors.green[700] : Colors.green[200];
+        textColor = isDark ? Colors.white : Colors.black;
+        icon = Icons.check_circle;
+        estado = 'Completada';
+      } else {
+        bgColor = isDark ? Colors.red[700] : Colors.red[200];
+        textColor = isDark ? Colors.white : Colors.black;
+        icon = Icons.cancel;
+        estado = 'No completada';
+      }
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Meta diaria', style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(icon, color: textColor, size: 32),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Fecha: $fechaMeta', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: textColor)),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(Icons.bolt, color: Colors.orange, size: 18),
+                          const SizedBox(width: 4),
+                          Text('Objetivo: $hierroObjetivo mg', style: TextStyle(fontSize: 14, color: textColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.restaurant, color: Colors.blue, size: 18),
+                          const SizedBox(width: 4),
+                          Text('Consumido: $hierroConsumido mg', style: TextStyle(fontSize: 14, color: textColor)),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(estado, style: TextStyle(color: textColor, fontWeight: FontWeight.w600)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _fetchSummary();
+    _fetchTodasLasMetas();
   }
 
-  Future<void> _fetchSummary() async {
+  Future<void> _fetchTodasLasMetas() async {
+    setState(() {
+      _isLoadingMetas = true;
+    });
+    try {
+      final api = context.read<NutriAppApi>();
+      final metas = await api.metas.getTodasMisMetas();
+      setState(() {
+        _todasLasMetas = metas;
+        _isLoadingMetas = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMetas = false;
+      });
+    }
+  }  Future<void> _fetchSummary() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -140,7 +263,210 @@ class _HomeScreenState extends State<HomeScreen> {
             centerText: "${hierroRestante.toStringAsFixed(1)}\nRestante",
             colorList: [AppColors.primary, theme.colorScheme.surfaceVariant],
           ),
+          const SizedBox(height: 32),
+          // --- Calendario mensual de metas diarias ---
+          _buildMetasDiariasCalendarCompleto(context),
         ],
+      ),
+    );
+  }
+
+  // --- CALENDARIO MENSUAL DE METAS DIARIAS ---
+  Widget _buildMetasDiariasCalendarCompleto(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    Widget legend = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Wrap(
+        spacing: 12,
+        runSpacing: 6,
+        alignment: WrapAlignment.center,
+        children: [
+          _legendDot(isDark ? Colors.grey[800] : Colors.grey[200], 'Sin meta', dark: isDark),
+          _legendDot(isDark ? Colors.blue[900] : Colors.blue[100], 'Meta futura', dark: isDark),
+          _legendDot(isDark ? Colors.green[700] : Colors.green[200], 'Completada', dark: isDark),
+          _legendDot(isDark ? Colors.red[700] : Colors.red[200], 'No completada', dark: isDark),
+        ],
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Calendario de metas diarias', style: theme.textTheme.titleMedium),
+        const SizedBox(height: 8),
+        legend,
+        if (_isLoadingMetas)
+          const Center(child: CircularProgressIndicator())
+        else
+          TableCalendar(
+            locale: 'es_ES',
+            firstDay: DateTime.utc(2025, 1, 1),
+            lastDay: DateTime.utc(2026, 12, 31),
+            focusedDay: _focusedDay,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            calendarFormat: CalendarFormat.month,
+            availableGestures: AvailableGestures.horizontalSwipe,
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+              final meta = _todasLasMetas.firstWhere(
+                (m) => m['fecha'] == selectedDay.toIso8601String().substring(0, 10),
+                orElse: () => <String, dynamic>{},
+              );
+              if (meta.isNotEmpty) {
+                _showMetaDialog(meta, isDark);
+              }
+            },
+            calendarBuilders: CalendarBuilders(
+              defaultBuilder: (context, day, focusedDay) {
+                final meta = _todasLasMetas.firstWhere(
+                  (m) => m['fecha'] == day.toIso8601String().substring(0, 10),
+                  orElse: () => <String, dynamic>{},
+                );
+                Color? bgColor;
+                if (meta.isEmpty) {
+                  bgColor = isDark ? Colors.grey[800] : Colors.grey[200];
+                } else {
+                  final completada = meta['completada'] == true;
+                  final metaDate = DateTime.tryParse(meta['fecha'] ?? '') ?? DateTime.now();
+                  if (metaDate.isAfter(DateTime.now())) {
+                    bgColor = isDark ? Colors.blue[900] : Colors.blue[100];
+                  } else if (completada) {
+                    bgColor = isDark ? Colors.green[700] : Colors.green[200];
+                  } else {
+                    bgColor = isDark ? Colors.red[700] : Colors.red[200];
+                  }
+                }
+                return Container(
+                  margin: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${day.day}',
+                    style: TextStyle(
+                      color: isDark ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showMetaDialog(Map<String, dynamic> meta, bool isDark) {
+    final fecha = meta['fecha'] ?? '-';
+    final hierroObjetivo = meta['hierroObjetivo']?.toString() ?? '-';
+    final hierroConsumido = meta['hierroConsumido']?.toString() ?? '-';
+    final completada = meta['completada'] == true;
+    final metaDate = DateTime.tryParse(meta['fecha'] ?? '') ?? DateTime.now();
+    Color? bgColor;
+    Color? textColor;
+    IconData icon;
+    String estado;
+    if (isDark) {
+      if (metaDate.isAfter(DateTime.now())) {
+        bgColor = Colors.blue[900];
+        textColor = Colors.white;
+      } else if (completada) {
+        bgColor = Colors.green[700];
+        textColor = Colors.white;
+      } else {
+        bgColor = Colors.red[700];
+        textColor = Colors.white;
+      }
+    } else {
+      if (metaDate.isAfter(DateTime.now())) {
+        bgColor = Colors.blue[100];
+        textColor = Colors.black;
+      } else if (completada) {
+        bgColor = Colors.green[200];
+        textColor = Colors.black;
+      } else {
+        bgColor = Colors.red[200];
+        textColor = Colors.black;
+      }
+    }
+    if (metaDate.isAfter(DateTime.now())) {
+      icon = Icons.schedule;
+      estado = 'Meta futura';
+    } else if (completada) {
+      icon = Icons.check_circle;
+      estado = 'Completada';
+    } else {
+      icon = Icons.cancel;
+      estado = 'No completada';
+    }
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: bgColor,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(icon, color: textColor, size: 32),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Meta del $fecha',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: textColor),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Icon(Icons.bolt, color: Colors.orange, size: 20),
+                  const SizedBox(width: 6),
+                  Text('Objetivo: $hierroObjetivo mg', style: TextStyle(fontSize: 15, color: textColor)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.restaurant, color: Colors.blue, size: 20),
+                  const SizedBox(width: 6),
+                  Text('Consumido: $hierroConsumido mg', style: TextStyle(fontSize: 15, color: textColor)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    completada ? Icons.check_circle : (metaDate.isAfter(DateTime.now()) ? Icons.schedule : Icons.cancel),
+                    color: completada ? Colors.green : (metaDate.isAfter(DateTime.now()) ? Colors.blue : Colors.red),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(estado, style: TextStyle(fontWeight: FontWeight.w600, color: textColor)),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(),
+                  child: Text('Cerrar', style: TextStyle(color: textColor)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
