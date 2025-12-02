@@ -1,4 +1,4 @@
-# Widget de Racha - NutriMama
+# Widget de Racha - NutriApp
 
 ## 📱 ¿Qué es esto?
 
@@ -11,7 +11,6 @@ Un widget de Android que puedes colocar en la pantalla principal de tu celular. 
 Ejecuta en la terminal:
 
 ```bash
-cd C:\Users\TurismoProyect\Documents\LTD\NutriMama\fe_nutriapp
 flutter pub get
 ```
 
@@ -41,7 +40,7 @@ El APK se generará en: `build/app/outputs/flutter-apk/app-release.apk`
 
 4. Selecciona **"Widgets"** o **"Complementos"** (depende de tu versión de Android)
 
-5. Busca **"NutriMama"** o **"fe_nutriapp"** en la lista de widgets
+5. Busca **"NutriApp"** o **"fe_nutriapp"** en la lista de widgets
 
 6. **Arrastra el widget** "Racha" a tu pantalla principal
 

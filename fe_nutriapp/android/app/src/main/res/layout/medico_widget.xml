@@ -19,11 +19,11 @@
         android:layout_marginBottom="12dp"
         android:elevation="4dp"/>
 
-    <!-- Título NutriMama -->
+    <!-- Título NutriApp -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="NutriMama"
+        android:text="NutriApp"
         android:textSize="24sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
