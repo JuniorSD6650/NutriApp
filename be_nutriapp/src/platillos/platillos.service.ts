@@ -122,12 +122,14 @@ export class PlatillosService {
     // Calcular el total de ingredientes para el gráfico
     const totalCantidad = platillo.ingredientes.reduce((sum, pi) => sum + pi.cantidad, 0);
 
-    const ingredientesDetalle = platillo.ingredientes.map((pi) => ({
-      ingredienteId: pi.ingrediente.id, // ✅ AÑADIR ESTE CAMPO
-      nombre: pi.ingrediente.name,
-      cantidad: pi.cantidad,
-      porcentaje: (pi.cantidad / totalCantidad) * 100,
-    }));
+    const ingredientesDetalle = platillo.ingredientes
+      .filter((pi) => pi.ingrediente !== null) // Filtrar ingredientes nulos
+      .map((pi) => ({
+        ingredienteId: pi.ingrediente.id,
+        nombre: pi.ingrediente.name,
+        cantidad: pi.cantidad,
+        porcentaje: (pi.cantidad / totalCantidad) * 100,
+      }));
 
     return {
       ...platillo,
