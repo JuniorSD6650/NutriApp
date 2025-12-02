@@ -155,32 +155,63 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _actualizarWidget(List<dynamic> metas) async {
-    // Calcular racha actual
-    final metasPasadas = metas.where((m) {
+    // Calcular racha actual - SOLO días completados hasta AYER (hoy NO cuenta)
+    final hoy = DateTime.now();
+    final hoySoloFecha = DateTime(hoy.year, hoy.month, hoy.day);
+    final ayerSoloFecha = hoySoloFecha.subtract(const Duration(days: 1));
+    
+    // Filtrar metas hasta AYER (NO incluir hoy)
+    final metasHastaAyer = metas.where((m) {
       final fecha = DateTime.tryParse(m['fecha'] ?? '');
       if (fecha == null) return false;
-      final hoy = DateTime.now();
-      return fecha.isBefore(hoy) || (fecha.year == hoy.year && fecha.month == hoy.month && fecha.day == hoy.day);
+      final fechaSolo = DateTime(fecha.year, fecha.month, fecha.day);
+      return fechaSolo.isBefore(hoySoloFecha); // Solo antes de hoy
     }).toList();
 
-    if (metasPasadas.isEmpty) return;
+    if (metasHastaAyer.isEmpty) {
+      // Si no hay metas, actualizar con racha 0
+      final userData = await context.read<NutriAppApi>().auth.getProfile();
+      final nombre = userData['name'] ?? 'Usuario';
+      final rol = userData['role'] ?? 'paciente';
+      await WidgetService.updateWidget(
+        rachaActual: 0,
+        nombrePaciente: nombre,
+        rol: rol,
+      );
+      return;
+    }
 
     // Ordenar de más reciente a más antiguo
-    final metasOrdenadas = metasPasadas.toList()
+    final metasOrdenadas = metasHastaAyer.toList()
       ..sort((a, b) {
         final fechaA = DateTime.parse(a['fecha']);
         final fechaB = DateTime.parse(b['fecha']);
         return fechaB.compareTo(fechaA);
       });
 
-    // Contar racha
+    // Contar racha - empieza desde AYER y cuenta hacia atrás
     int rachaActual = 0;
+    DateTime fechaEsperada = ayerSoloFecha;
+    
     for (var meta in metasOrdenadas) {
+      final fechaMeta = DateTime.parse(meta['fecha']);
+      final fechaMetaSolo = DateTime(fechaMeta.year, fechaMeta.month, fechaMeta.day);
+      
+      // Si esta meta no es del día esperado, rompemos la racha
+      if (fechaMetaSolo != fechaEsperada) {
+        break;
+      }
+      
+      // Solo contamos si está completada
       if (meta['completada'] == true) {
         rachaActual++;
       } else {
+        // Si un día no está completado, se rompe la racha
         break;
       }
+      
+      // Esperamos el día anterior
+      fechaEsperada = fechaEsperada.subtract(const Duration(days: 1));
     }
 
     // Obtener nombre del usuario
@@ -351,6 +382,7 @@ class _HomeScreenState extends State<HomeScreen> {
             focusedDay: _focusedDay,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             calendarFormat: CalendarFormat.month,
+            availableCalendarFormats: const {CalendarFormat.month: 'Month'},
             availableGestures: AvailableGestures.horizontalSwipe,
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {

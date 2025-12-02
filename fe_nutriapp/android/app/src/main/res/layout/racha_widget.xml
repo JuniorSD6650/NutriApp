@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="20dp"
+    android:padding="16dp"
     android:background="@drawable/widget_background"
     android:gravity="center"
     android:clickable="true"
@@ -16,11 +16,11 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="NutriMama"
-        android:textSize="16sp"
+        android:textSize="14sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         android:letterSpacing="0.1"
-        android:layout_marginBottom="4dp"
+        android:layout_marginBottom="2dp"
         android:shadowColor="#80000000"
         android:shadowDx="0"
         android:shadowDy="2"
@@ -31,17 +31,19 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Usuario"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:textColor="#FFFFFF"
         android:alpha="0.9"
-        android:layout_marginBottom="12dp"/>
+        android:maxLines="1"
+        android:ellipsize="end"
+        android:layout_marginBottom="8dp"/>
 
-    <!-- Ícono de fuego con sombra -->
+    <!-- Ícono de fuego -->
     <ImageView
-        android:layout_width="56dp"
-        android:layout_height="56dp"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:src="@drawable/ic_fire"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="6dp"
         android:elevation="4dp"/>
 
     <!-- Número de racha grande -->
@@ -50,33 +52,34 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="0"
-        android:textSize="56sp"
+        android:textSize="52sp"
         android:textColor="#FFFFFF"
         android:textStyle="bold"
         android:shadowColor="#80000000"
         android:shadowDx="0"
         android:shadowDy="3"
-        android:shadowRadius="6"/>
+        android:shadowRadius="6"
+        android:layout_marginBottom="2dp"/>
 
     <TextView
         android:id="@+id/widget_label"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="días seguidos"
-        android:textSize="14sp"
+        android:textSize="13sp"
         android:textColor="#FFFFFF"
         android:alpha="0.95"
-        android:layout_marginTop="4dp"/>
+        android:maxLines="1"
+        android:layout_marginBottom="8dp"/>
 
     <!-- Mensaje motivacional -->
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="¡Sigue así! 💪"
-        android:textSize="13sp"
+        android:textSize="12sp"
         android:textColor="#FFFFFF"
         android:alpha="0.85"
-        android:layout_marginTop="12dp"
         android:textStyle="italic"/>
 
 </LinearLayout>

@@ -216,6 +216,7 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
                 focusedDay: _focusedDay,
                 selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                 calendarFormat: CalendarFormat.month,
+                availableCalendarFormats: const {CalendarFormat.month: 'Month'},
                 availableGestures: AvailableGestures.horizontalSwipe,
                 onDaySelected: (selectedDay, focusedDay) {
                   setState(() {
@@ -426,21 +427,50 @@ class _MedicoPacienteDetailScreenState extends State<MedicoPacienteDetailScreen>
     promedioObjetivo = diasTotales > 0 ? promedioObjetivo / diasTotales : 0;
     promedioConsumido = diasTotales > 0 ? promedioConsumido / diasTotales : 0;
 
-    // Calcular racha actual (días consecutivos completados hasta hoy)
+    // Calcular racha actual (días consecutivos completados hasta AYER) - HOY NO CUENTA
     int rachaActual = 0;
-    final metasOrdenadas = metasPasadas.toList()
+    final hoy = DateTime.now();
+    final hoySoloFecha = DateTime(hoy.year, hoy.month, hoy.day);
+    final ayerSoloFecha = hoySoloFecha.subtract(const Duration(days: 1));
+    
+    // Filtrar solo hasta ayer
+    final metasHastaAyer = metasPasadas.where((m) {
+      final fecha = DateTime.tryParse(m['fecha'] ?? '');
+      if (fecha == null) return false;
+      final fechaSolo = DateTime(fecha.year, fecha.month, fecha.day);
+      return fechaSolo.isBefore(hoySoloFecha);
+    }).toList();
+    
+    // Ordenar de más reciente a más antiguo
+    final metasOrdenadas = metasHastaAyer.toList()
       ..sort((a, b) {
         final fechaA = DateTime.parse(a['fecha']);
         final fechaB = DateTime.parse(b['fecha']);
         return fechaB.compareTo(fechaA); // Más reciente primero
       });
 
+    // Contar racha - empieza desde AYER y cuenta hacia atrás
+    DateTime fechaEsperada = ayerSoloFecha;
+    
     for (var meta in metasOrdenadas) {
+      final fechaMeta = DateTime.parse(meta['fecha']);
+      final fechaMetaSolo = DateTime(fechaMeta.year, fechaMeta.month, fechaMeta.day);
+      
+      // Si esta meta no es del día esperado, rompemos la racha
+      if (fechaMetaSolo != fechaEsperada) {
+        break;
+      }
+      
+      // Solo contamos si está completada
       if (meta['completada'] == true) {
         rachaActual++;
       } else {
+        // Si un día no está completado, se rompe la racha
         break;
       }
+      
+      // Esperamos el día anterior
+      fechaEsperada = fechaEsperada.subtract(const Duration(days: 1));
     }
 
     final theme = Theme.of(context);
