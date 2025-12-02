@@ -137,12 +137,12 @@ class _ChartsScreenState extends State<ChartsScreen> {
                   BarChartRodStackItem(
                     0,
                     consumido.toDouble(),
-                    consumido >= meta ? Colors.green : barColor,
+                    consumido >= meta ? Colors.green : Colors.blue, // Azul para lo consumido
                   ),
                   BarChartRodStackItem(
                     consumido.toDouble(),
                     meta.toDouble(),
-                    Colors.grey.withOpacity(0.3),
+                    Colors.red.withOpacity(0.6), // Rojo para lo faltante
                   ),
                 ],
                 width: 16,
@@ -191,9 +191,11 @@ class _ChartsScreenState extends State<ChartsScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _buildLegendItem('Consumido', Colors.green),
+                  _buildLegendItem('Completado', Colors.green),
                   const SizedBox(width: 16),
-                  _buildLegendItem('Faltante', Colors.grey.withOpacity(0.3)),
+                  _buildLegendItem('Consumido', Colors.blue),
+                  const SizedBox(width: 16),
+                  _buildLegendItem('Faltante', Colors.red.withOpacity(0.6)),
                 ],
               ),
             const SizedBox(height: 16),
