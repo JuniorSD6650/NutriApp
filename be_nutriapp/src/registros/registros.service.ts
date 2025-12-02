@@ -264,6 +264,8 @@ export class RegistrosService {
           if (platilloIngrediente.ingrediente?.nutrientes) {
             for (const ingredienteNutriente of platilloIngrediente.ingrediente.nutrientes) {
               const nutriente = ingredienteNutriente.nutriente;
+              if (!nutriente) continue; // Saltar si el nutriente es null
+              
               const valorPor100g = ingredienteNutriente.value_per_100g;
               const valorTotal = (valorPor100g * cantidadEnGramos) / 100;
 
