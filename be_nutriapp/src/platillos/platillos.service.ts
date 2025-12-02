@@ -91,12 +91,14 @@ export class PlatillosService {
       where.deletedAt = Not(IsNull());
     }
 
+    // Si limit es muy grande (999999), no aplicar paginación
+    const usePagination = limit < 999999;
+
     const [data, total] = await this.platilloRepository.findAndCount({
       where,
       withDeleted: estado !== FiltroEstado.ACTIVO,
       relations: ['ingredientes', 'ingredientes.ingrediente'],
-      take: limit,
-      skip,
+      ...(usePagination && { take: limit, skip }),
       order: { createdAt: 'DESC' },
     });
 

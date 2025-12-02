@@ -20,6 +20,7 @@ import { RefreshToken } from './auth/entities/refresh-token.entity';
 import { PlatillosModule } from './platillos/platillos.module';
 import { MetasModule } from './metas/metas.module';
 import { ProfilesModule } from './profiles/profiles.module';
+import { AiModule } from './ai/ai.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -55,6 +56,7 @@ import { ProfilesModule } from './profiles/profiles.module';
   RegistrosModule,
   MetasModule,
   ProfilesModule,
+  AiModule,
   ],
   controllers: [AppController],
   providers: [AppService],

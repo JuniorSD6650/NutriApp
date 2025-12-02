@@ -3,7 +3,8 @@ import 'api/auth_api.dart';
 import 'api/metas_api.dart';
 import 'api/registros_api.dart';
 import 'api/medico_api.dart';
-import 'api/admin_api.dart'; // <-- AÑADIR IMPORT
+import 'api/admin_api.dart';
+import 'api/ai_api.dart';
 import 'dart:ui';
 
 class NutriAppApi {
@@ -13,14 +14,16 @@ class NutriAppApi {
   late final MetasApi metas;
   late final RegistrosApi registros;
   late final MedicoApi medico;
-  late final AdminApi admin; // <-- AÑADIR ADMIN API
+  late final AdminApi admin;
+  late final AiApi ai;
 
   NutriAppApi() {
     auth = AuthApi(_apiService);
     metas = MetasApi(_apiService);
     registros = RegistrosApi(_apiService);
     medico = MedicoApi(_apiService);
-    admin = AdminApi(_apiService); // <-- INICIALIZAR ADMIN API
+    admin = AdminApi(_apiService);
+    ai = AiApi(_apiService);
   }
 
   void setToken(String? token) => _apiService.setToken(token);
